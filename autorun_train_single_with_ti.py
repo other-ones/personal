@@ -40,7 +40,7 @@ stats=get_gpu_memory()
 for stat_idx,stat in enumerate(stats):
     if stat>2e4:
         break
-log_dir='logs_mlmlimited/single'
+log_dir='logs/train/single/with_ti'
 os.makedirs(log_dir,exist_ok=True)   
 ports=np.arange(1111,2222)
 fixtes=[0]
@@ -74,6 +74,8 @@ for mlm_prior in mlm_priors:
                     if fixte:
                         run_name+='_fixte'
                     run_name+='_mlmprior{}'.format(mlm_prior_str)
+                    run_name+='_with_ti'
+
                     output_dir=os.path.join('dreambooth_models/single',concept)
                     exp_path=os.path.join(output_dir,run_name)
                     if os.path.exists(exp_path):
@@ -91,6 +93,7 @@ for mlm_prior in mlm_priors:
                         stat_idx+=1
                         stat_idx=(stat_idx%len(stats))
                     print(run_name,device_idx)
+                    learned_embed_path1='saved_models/ti_models/single_prior/{}/ti_norm0_prior_mlm0001_{}/checkpoints/learned_embeds_s3000.pt'.format(concept,concept)
                     log_path=os.path.join(log_dir,run_name+'.out')
                     command='export CUDA_VISIBLE_DEVICES={};'.format(device_idx)
                     command+='accelerate launch --main_process_port {} train_dreambooth_single_mlm.py \\\n'.format(ports[idx],idx)
@@ -122,6 +125,7 @@ for mlm_prior in mlm_priors:
                     command+='--run_name="{}" \\\n'.format(run_name)
                     command+='--with_prior_preservation={} \\\n'.format(pp)
                     command+='--class_prompt="a picture of a {}" \\\n'.format(prior)
+                    command+='--learned_embed_path1="{}" \\\n'.format(learned_embed_path1)
                     command+='--class_data_dir="priors/{}" \\\n'.format(prior)
                     if not fixte:
                         command+='--train_text_encoder \\\n'
