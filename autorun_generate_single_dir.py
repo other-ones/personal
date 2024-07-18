@@ -43,7 +43,7 @@ idx=0
 # dirs=['multi','single']
 dirs=['single']
 for dir in dirs:
-    dir_path=os.path.join('dreambooth_models',dir)
+    dir_path=os.path.join('saved_models/dreambooth_models',dir)
     log_dir='logs/generate/{}'.format(dir)
     os.makedirs(log_dir,exist_ok=True)    
     concepts=os.listdir(dir_path)
@@ -60,7 +60,7 @@ for dir in dirs:
             if not os.path.exists(resume_unet_path):
                 print(resume_unet_path,'does not exist')
                 continue
-            exp_name=resume_unet_path.split('/')[3]
+            exp_name=resume_unet_path.split('/')[-4]
             output_dir=os.path.join('results/{}/{}'.format(dir,concept))
             exp_path=os.path.join(output_dir,exp_name)
             if os.path.exists(exp_path):

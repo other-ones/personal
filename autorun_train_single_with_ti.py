@@ -13,10 +13,10 @@ info_map={
     'teddybear':('teddybear','nonliving'),
     'cat1': ('cat','pet'),
     'dog3': ('dog','pet'),
-    # 'pink_sunglasses':('sunglasses','sunglasses'),
-    # 'chair1': ('chair','nonliving'),
-    # 'cat_statue': ('toy','nonliving'),
-    # 'rc_car':('toy','nonliving'),
+    'cat_statue': ('toy','nonliving'),
+    'rc_car':('toy','nonliving'),
+    'pink_sunglasses':('sunglasses','sunglasses'),
+    'chair1': ('chair','nonliving'),
     # 'flower1':('flower','flower'),
     
 }
