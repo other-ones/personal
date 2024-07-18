@@ -15,13 +15,13 @@ accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
   --output_dir="saved_models/dreambooth_models/multi/" \
   --seed=7777 \
   --mask_tokens="[MASK]" \
-  --lambda_mlm=0.005 --freeze_mask_embedding=1 \
+  --lambda_mlm=0.001 --freeze_mask_embedding=1 \
   --cls_net_path='saved_models/mlm_contextnet_nonpad_lr1e4/checkpoints/cls_net_99000_ckpt.pt' \
   --mask_embed_path='saved_models/mlm_contextnet_nonpad_lr1e4/checkpoints/mask_embeds_99000_ckpt.pt' \
   --mlm_target='masked' \
   --mlm_batch_size=20 \
   --run_name='tmp_with_ti_multi' \
-  --prompt_type='pet' \
+  --prompt_type='two_pets' \
   --include_prior_concept=1 \
   --train_text_encoder \
   --validation_steps=100 \
@@ -32,4 +32,5 @@ accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
   --class_data_dir1="priors/cat" \
   --class_prompt2="a picture of a dog" \
   --class_data_dir2="priors/dog" \
-  --simple_caption=1
+  --simple_caption=1 \
+  --make_composition=1

@@ -336,8 +336,8 @@ def collate_fn(examples,with_prior_preservation=False):
         # 5. For MLM 
         input_ids_masked = [example["input_ids_masked"] for example in examples]
         input_ids_masked=torch.stack(input_ids_masked)
-        input_ids_non_mask = [example["input_ids_non_mask"] for example in examples]
-        input_ids_non_mask=torch.stack(input_ids_non_mask)
+        input_ids_pos = [example["input_ids_pos"] for example in examples]
+        input_ids_pos=torch.stack(input_ids_pos)
         masked_idxs = [example["masked_idxs"] for example in examples] #N,77, list of booleans
         masked_idxs = torch.stack(masked_idxs)
         mlm_labels = [example["mlm_labels"] for example in examples] #N,77, list of booleans
@@ -353,7 +353,7 @@ def collate_fn(examples,with_prior_preservation=False):
             "pixel_values": pixel_values,
             "input_ids": input_ids, # for reconstruction
             "input_ids_masked": input_ids_masked, # for mlm
-            "input_ids_non_mask": input_ids_non_mask, # for mlm
+            "input_ids_pos": input_ids_pos, # for mlm
             "masked_idxs": masked_idxs,
             "mlm_labels": mlm_labels,
             "non_special_idxs": non_special_idxs,
@@ -482,7 +482,7 @@ def main(args):
 
     # Generate class images if prior preservation is enabled.
     if args.with_prior_preservation:
-        class_images_dir = Path(args.class_data_dir)
+        class_images_dir = Path(args.class_data_dir1)
         if not class_images_dir.exists():
             class_images_dir.mkdir(parents=True)
         cur_class_images = len(list(class_images_dir.iterdir()))
@@ -507,7 +507,7 @@ def main(args):
             num_new_images = args.num_class_images - cur_class_images
             logger.info(f"Number of class images to sample: {num_new_images}.")
 
-            sample_dataset = PromptDataset(args.class_prompt, num_new_images)
+            sample_dataset = PromptDataset(args.class_prompt1, num_new_images)
             sample_dataloader = torch.utils.data.DataLoader(sample_dataset, batch_size=args.sample_batch_size)
 
             sample_dataloader = accelerator.prepare(sample_dataloader)
@@ -750,8 +750,8 @@ def main(args):
         else:
             validation_prompt_encoder_hidden_states = None
 
-        if args.class_prompt is not None:
-            pre_computed_class_prompt_encoder_hidden_states = compute_text_embeddings(args.class_prompt)
+        if args.class_prompt1 is not None:
+            pre_computed_class_prompt_encoder_hidden_states = compute_text_embeddings(args.class_prompt1)
         else:
             pre_computed_class_prompt_encoder_hidden_states = None
 
@@ -770,8 +770,8 @@ def main(args):
     # train_dataset = DreamBoothDataset(
     #     instance_data_root=args.instance_data_dir,
     #     instance_prompt=args.instance_prompt,
-    #     class_data_root=args.class_data_dir if args.with_prior_preservation else None,
-    #     class_prompt=args.class_prompt,
+    #     class_data_root=class_data_dir1 if args.with_prior_preservation else None,
+    #     class_prompt=args.class_prompt1,
     #     class_num=args.num_class_images,
     #     tokenizer=tokenizer,
     #     size=args.resolution,
@@ -794,9 +794,9 @@ def main(args):
         mlm_target=args.mlm_target,
         get_images=True,
         prompt_type=args.prompt_type,
-        class_data_root=args.class_data_dir if args.with_prior_preservation else None,
+        class_data_root=args.class_data_dir1 if args.with_prior_preservation else None,
         class_num=args.num_class_images,
-        class_prompt=args.class_prompt,
+        class_prompt=args.class_prompt1,
         simple_caption=args.simple_caption,
         mlm_prior=args.mlm_prior,
     )
@@ -816,9 +816,9 @@ def main(args):
         prompt_type=args.prompt_type,
         simple_caption=args.simple_caption,
         mlm_prior=args.mlm_prior,
-        # class_data_root=args.class_data_dir if args.with_prior_preservation else None,
+        # class_data_root=class_data_dir1 if args.with_prior_preservation else None,
         # class_num=args.num_class_images,
-        # class_prompt=args.class_prompt,
+        # class_prompt=args.class_prompt1,
     )
 
     # train_dataloader = torch.utils.data.DataLoader(
@@ -988,7 +988,7 @@ def main(args):
                 mlm_labels=batch_mlm["mlm_labels"].to(accelerator.device)
                 non_special_idxs=batch_mlm["non_special_idxs"]
                 input_ids_masked=batch_mlm["input_ids_masked"].to(accelerator.device)
-                input_ids_non_mask=batch_mlm["input_ids_non_mask"].to(accelerator.device)
+                input_ids_pos=batch_mlm["input_ids_pos"].to(accelerator.device)
                 # for MLM
                 # Load Batch
 
@@ -1185,15 +1185,15 @@ def main(args):
                             masked_idxs=masked_idxs.detach().cpu().numpy()[viz_idx:viz_idx+1]
                             non_special_idxs=non_special_idxs.detach().cpu()[viz_idx:viz_idx+1]
                             mlm_logits=mlm_logits.argmax(-1).detach().cpu().numpy()[viz_idx:viz_idx+1]#1,77
-                            input_ids_non_mask=input_ids_non_mask[viz_idx:viz_idx+1]
+                            input_ids_pos=input_ids_pos[viz_idx:viz_idx+1]
                             input_ids_masked=input_ids_masked[viz_idx:viz_idx+1]
 
-                            input_ids_non_mask=input_ids_non_mask[non_special_idxs]
+                            input_ids_pos=input_ids_pos[non_special_idxs]
                             input_ids_masked=input_ids_masked[non_special_idxs]
                             mlm_logits=mlm_logits[non_special_idxs]
                             masked_idxs=masked_idxs[non_special_idxs]
 
-                            decoded=tokenizer.batch_decode(input_ids_non_mask)
+                            decoded=tokenizer.batch_decode(input_ids_pos)
                             decoded_masked=tokenizer.batch_decode(input_ids_masked)
                             decoded_logits=tokenizer.batch_decode(mlm_logits)
                             decoded_list=[]

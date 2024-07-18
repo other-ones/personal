@@ -395,12 +395,12 @@ class TextualInversionDataset(Dataset):
         example['non_special_idxs']=non_special_idxs
 
         # 7) non_mask_input_ids
-        example["input_ids_non_mask"]= self.tokenizer(
-            caption_pos,
-            padding="max_length",
-            truncation=True,
-            max_length=self.tokenizer.model_max_length,
-            return_tensors="pt",
-        ).input_ids[0]
+        # example["input_ids_pos"]= self.tokenizer(
+        #     caption_pos,
+        #     padding="max_length",
+        #     truncation=True,
+        #     max_length=self.tokenizer.model_max_length,
+        #     return_tensors="pt",
+        # ).input_ids[0]
         return example
 

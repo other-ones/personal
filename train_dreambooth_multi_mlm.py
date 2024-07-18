@@ -306,7 +306,6 @@ def import_model_class_from_model_name_or_path(pretrained_model_name_or_path: st
 
 
 def collate_fn(examples,with_prior_preservation=False):
-
         if 'pixel_values' in examples[0]:
             # 1. pixel_values
             pixel_values = [example["pixel_values"] for example in examples]
@@ -323,8 +322,8 @@ def collate_fn(examples,with_prior_preservation=False):
             is_keyword_tokens2 = [example["is_keyword_tokens2"] for example in examples] #N,77, list of booleans
             if with_prior_preservation:
                 input_ids += [example["class_prompt_ids"] for example in examples]
-                is_keyword_tokens1 += [example["is_keyword_tokens_prior1"] for example in examples]
-                is_keyword_tokens2 += [example["is_keyword_tokens_prior2"] for example in examples]
+                is_keyword_tokens1 += [example["is_keyword_tokens_prior"] for example in examples]
+                is_keyword_tokens2 += [example["is_keyword_tokens_prior"] for example in examples]
                 pixel_values += [example["class_images"] for example in examples]
             is_keyword_tokens1 = torch.stack(is_keyword_tokens1)
             is_keyword_tokens2 = torch.stack(is_keyword_tokens2)
@@ -341,8 +340,8 @@ def collate_fn(examples,with_prior_preservation=False):
         # 5. For MLM 
         input_ids_masked = [example["input_ids_masked"] for example in examples]
         input_ids_masked=torch.stack(input_ids_masked)
-        input_ids_non_mask = [example["input_ids_non_mask"] for example in examples]
-        input_ids_non_mask=torch.stack(input_ids_non_mask)
+        input_ids_pos = [example["input_ids_pos"] for example in examples]
+        input_ids_pos=torch.stack(input_ids_pos)
         masked_idxs = [example["masked_idxs"] for example in examples] #N,77, list of booleans
         masked_idxs = torch.stack(masked_idxs)
         mlm_labels = [example["mlm_labels"] for example in examples] #N,77, list of booleans
@@ -564,7 +563,8 @@ def main(args):
     placeholder_token1 = [args.placeholder_token1]
     placeholder_token2 = [args.placeholder_token2]
     tokenizer.add_tokens(mask_tokens)
-    tokenizer.add_tokens(placeholder_tokens)
+    tokenizer.add_tokens(placeholder_token1)
+    tokenizer.add_tokens(placeholder_token2)
     mask_token_ids = tokenizer.convert_tokens_to_ids(mask_tokens)
     placeholder_token_id1 = tokenizer.convert_tokens_to_ids(placeholder_token1)
     placeholder_token_id2 = tokenizer.convert_tokens_to_ids(placeholder_token2)
@@ -762,7 +762,6 @@ def main(args):
         repeats=args.repeats,
         center_crop=args.center_crop,
         flip_p=args.flip_p,
-        prior_concept=args.prior_concept1,
         mask_token_ids=mask_token_ids[0],
         mlm_target=args.mlm_target,
         get_images=True,
@@ -787,19 +786,19 @@ def main(args):
     )
     train_dataset_mlm = TextualInversionDatasetMulti(
         include_prior_concept=args.include_prior_concept,
-        data_root=args.train_data_dir1,
         tokenizer=tokenizer,
         size=args.resolution,
         repeats=args.repeats,
         center_crop=args.center_crop,
         flip_p=args.flip_p,
-        prior_concept=args.prior_concept1,
         mask_token_ids=mask_token_ids[0],
         mlm_target=args.mlm_target,
         get_images=False,
         prompt_type=args.prompt_type,
 
         # multi
+        data_root1=args.train_data_dir1,
+        data_root2=args.train_data_dir1,
         placeholder_tokens=placeholder_tokens,
         placeholder_ids=placeholder_ids,
         prior_concepts=prior_concepts,
@@ -828,7 +827,7 @@ def main(args):
         collate_fn=lambda examples: collate_fn(examples, args.with_prior_preservation),
     )
     # HERE
-    mlm_loader = torch.utils.data.DataLoader(
+    mlm_loader_multi = torch.utils.data.DataLoader(
             train_dataset_mlm,
             batch_size=args.mlm_batch_size,
             shuffle=True,

@@ -27,6 +27,6 @@ accelerate launch --main_process_port 4235  train_dreambooth_single_mlm.py \
   --train_text_encoder \
   --validation_steps=100 \
   --with_prior_preservation=1 \
-  --class_prompt="a picture of a dog" \
-  --class_data_dir="priors/dog" \
+  --class_prompt1="a picture of a dog" \
+  --class_data_dir1="priors/dog" \
   --simple_caption=1

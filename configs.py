@@ -5,6 +5,7 @@ import argparse
 def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     # ADDED
+    parser.add_argument('--make_composition',type=int,required=False)
     parser.add_argument("--class_data_dir1",type=str,default=None,required=False,help="A folder containing the training data of class images.")
     parser.add_argument("--class_data_dir2",type=str,default=None,required=False,help="A folder containing the training data of class images.")
     parser.add_argument("--class_prompt1",type=str,default=None,help="The prompt to specify images in the same class as provided instance images.",)
@@ -394,9 +395,9 @@ def parse_args(input_args=None):
         args.local_rank = env_local_rank
 
     if args.with_prior_preservation:
-        if args.class_data_dir is None:
+        if args.class_data_dir1 is None:
             raise ValueError("You must specify a data directory for class images.")
-        if args.class_prompt is None:
+        if args.class_prompt1 is None:
             raise ValueError("You must specify prompt for class images.")
     else:
         # logger is not available yet
