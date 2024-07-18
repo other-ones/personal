@@ -182,6 +182,7 @@ class TextualInversionDatasetMulti(Dataset):
         self.mlm_prior = mlm_prior
         self.instance_images_path = list(Path(data_root1).iterdir())
         self.num_instance_images = len(self.instance_images_path)
+        
         if class_data_root1 is not None:
             self.class_data_root1 = Path(class_data_root1)
             self.class_data_root2 = Path(class_data_root2)
@@ -207,6 +208,7 @@ class TextualInversionDatasetMulti(Dataset):
             self.class_images_path2 = None
             self.class_prompts=None
             self.class_images_paths=None
+        print(class_data_root1,'class_data_root1')
         # prior_preservation
         
 
@@ -348,44 +350,32 @@ class TextualInversionDatasetMulti(Dataset):
                 else:
                     placeholder='{}'.format(placeholder_token)
                 text = random.choice(prefixes).format(placeholder)
-                # prior_image
-                if self.class_images_paths:
-                    num_class_images=len(self.class_images_paths[sampled_concept])
-                    class_image = Image.open(self.class_images_paths[sampled_concept][index % num_class_images])
-                    if not class_image.mode == "RGB":
-                        class_image = class_image.convert("RGB")
-                    # class_image = exif_transpose(class_image)
-                    class_image = class_image.resize((self.size, self.size), resample=self.interpolation)
-                    class_image = np.array(class_image).astype(np.uint8)
-                    class_image = (class_image / 127.5 - 1.0).astype(np.float32)
-                    class_image=torch.from_numpy(class_image).permute(2, 0, 1)
-                    example["class_images"] = class_image
-                    class_text_inputs=self.tokenizer(
-                        self.class_prompts[sampled_concept],
-                        truncation=True,
-                        padding="max_length",
-                        max_length=self.tokenizer.model_max_length,
-                        return_tensors="pt",
-                    )
-                    example["class_prompt_ids"] = class_text_inputs.input_ids[0]
-                    is_keyword_tokens_prior=[False]*self.tokenizer.model_max_length
-                    # # print(self.class_prompt,'self.class_prompt')
-                    # text_words_prior=self.class_prompts[sampled_concept].split()
-                    # for word_idx in range(len(text_words_prior)):
-                    #     cap_word=text_words_prior[word_idx]
-                    #     word_token_ids=self.tokenizer.encode(cap_word,add_special_tokens=False)
-                    #     num_tokens=len(word_token_ids)
-                    #     for tok_id in word_token_ids:
-                    #         if placeholder_token in cap_word:
-                    #             is_keyword_tokens_prior.append(True)
-                    #         else:
-                    #             is_keyword_tokens_prior.append(False)
-                    # for _ in range(len(is_keyword_tokens_prior),self.tokenizer.model_max_length):
-                    #     is_keyword_tokens_prior.append(False)
-                    assert len(is_keyword_tokens_prior)==self.tokenizer.model_max_length
-                    is_keyword_tokens_prior=torch.BoolTensor(is_keyword_tokens_prior)
-                    example["is_keyword_tokens_prior"]=is_keyword_tokens_prior
-                # prior_image
+            # prior_image
+            if self.class_images_paths:
+                sampled_prior=np.random.choice([0,1])
+                num_class_images=len(self.class_images_paths[sampled_prior])
+                class_image = Image.open(self.class_images_paths[sampled_prior][index % num_class_images])
+                if not class_image.mode == "RGB":
+                    class_image = class_image.convert("RGB")
+                # class_image = exif_transpose(class_image)
+                class_image = class_image.resize((self.size, self.size), resample=self.interpolation)
+                class_image = np.array(class_image).astype(np.uint8)
+                class_image = (class_image / 127.5 - 1.0).astype(np.float32)
+                class_image=torch.from_numpy(class_image).permute(2, 0, 1)
+                example["class_images"] = class_image
+                class_text_inputs=self.tokenizer(
+                    self.class_prompts[sampled_prior],
+                    truncation=True,
+                    padding="max_length",
+                    max_length=self.tokenizer.model_max_length,
+                    return_tensors="pt",
+                )
+                example["class_prompt_ids"] = class_text_inputs.input_ids[0]
+                is_keyword_tokens_prior=[False]*self.tokenizer.model_max_length
+                assert len(is_keyword_tokens_prior)==self.tokenizer.model_max_length
+                is_keyword_tokens_prior=torch.BoolTensor(is_keyword_tokens_prior)
+                example["is_keyword_tokens_prior"]=is_keyword_tokens_prior
+            # prior_image
                 
                 
             img = image.astype(np.uint8)

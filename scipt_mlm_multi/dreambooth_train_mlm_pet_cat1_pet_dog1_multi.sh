@@ -33,4 +33,5 @@ accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
   --class_prompt2="a picture of a dog" \
   --class_data_dir2="priors/dog" \
   --simple_caption=1 \
-  --make_composition=1
+  --make_composition=1 \
+  --masked_loss=1

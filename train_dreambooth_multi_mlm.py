@@ -135,53 +135,28 @@ def log_validation(
 ):
     
     if args.include_prior_concept:
-        placeholder='{} {}'.format(args.placeholder_token1,args.prior_concept1)
+        placeholder1='{} {}'.format(args.placeholder_token1,args.prior_concept1)
+        placeholder2='{} {}'.format(args.placeholder_token2,args.prior_concept2)
     else:
-        placeholder='{}'.format(args.placeholder_token1)
-    
-    if args.prompt_type=='pet':
+        placeholder1='{}'.format(args.placeholder_token1)
+        placeholder2='{}'.format(args.placeholder_token2)
+    if args.prompt_type=='two_pets':
         validation_prompts=[
-            # "a picture of {} swimming in a pool".format(placeholder),
-            "a picture of {} with the Great Wall of China in the background".format(placeholder),
-            "a picture of {} in times square".format(placeholder),
-            # "{} on a boat in the sea".format(placeholder),
-            # "{} in a purple wizard outfit".format(placeholder),
-            "{} playing with a ball".format(placeholder),
-            # "{} wearing sunglasses".format(placeholder),
+            # "a picture of {} swimming in a pool".format(placeholder1),
+            # "a picture of {} swimming in a pool".format(placeholder2),
+            # "a picture of {} and {}".format(placeholder1,placeholder2),
+            "a picture of {} and {} swimming in a pool".format(placeholder1,placeholder2),
+            "a picture of {} and {} with the Great Wall of China in the background".format(placeholder1,placeholder2),
+            "a picture of {} lying next to {}".format(placeholder1,placeholder2),
+            # "a picture of {} playing with {}".format(placeholder1,placeholder2),
+            "a picture of {} chasing {}".format(placeholder1,placeholder2),
+            # "a picture of {} and {} in times square".format(placeholder1,placeholder2),
+            # "{} and {} on a boat in the sea".format(placeholder1,placeholder2),
+            # "{} and {} in a purple wizard outfit".format(placeholder1,placeholder2),
+            # "{} and {} playing with a ball".format(placeholder1,placeholder2),
+            # "{} and {} wearing sunglasses".format(placeholder1,placeholder2),
             ]
     # vase
-    
-    elif args.prompt_type in ['nonliving']:
-        validation_prompts = [
-            # 'a {0} in the jungle'.format(placeholder),
-            # 'a {0} in the snow'.format(placeholder),
-            'a {0} with a blue house in the background'.format(placeholder),
-            'a {0} with the Eiffel Tower in the background'.format(placeholder),
-            # 'a purple {0}'.format(placeholder),
-            # 'a wet {0}'.format(placeholder),
-            'a cube shaped {0}'.format(placeholder)
-            ]
-    elif args.prompt_type in ['building']:
-        validation_prompts = [
-            # '{} in snowy ice.'.format(placeholder),
-            '{} at a beach with a view of the seashore.'.format(placeholder),
-            # 'Photo of the {} with the sun rising in the sky.'.format(placeholder),
-            # 'cat sitting in front of {} in snowy ice.'.format(placeholder),
-            # '{} digital painting 3d render geometric style.'.format(placeholder),
-            'painting of {} in the style of van gogh.'.format(placeholder),
-            'Top view of the {}. '.format(placeholder)
-            ]
-    elif args.prompt_type in ['sunglasses']:
-        validation_prompts=[
-            # 'photo of a {}'.format(placeholder),
-            # 'close shot of {} on the sandy beach with a view of the seashore'.format(placeholder),
-            'A scientist wearing {} examines a test tube'.format(placeholder),
-            # 'A dog wearing {} on the porch'.format(placeholder),
-            'A giraffe wearing {}'.format(placeholder),
-            # '{} painted in the style of andy warhol'.format(placeholder),
-            # 'digital painting of a turtle wearing {}'.format(placeholder),
-            '{} digital 3d render'.format(placeholder),
-        ]
     else:
         assert False
     logger.info(
@@ -320,6 +295,8 @@ def collate_fn(examples,with_prior_preservation=False):
             # 2. prior preseravation
             is_keyword_tokens1 = [example["is_keyword_tokens1"] for example in examples] #N,77, list of booleans
             is_keyword_tokens2 = [example["is_keyword_tokens2"] for example in examples] #N,77, list of booleans
+            for example in examples:
+                print(example.keys(),'example.keys()')
             if with_prior_preservation:
                 input_ids += [example["class_prompt_ids"] for example in examples]
                 is_keyword_tokens1 += [example["is_keyword_tokens_prior"] for example in examples]
@@ -333,7 +310,8 @@ def collate_fn(examples,with_prior_preservation=False):
         else:
             pixel_values=[]
             input_ids=[]
-            is_keyword_tokens=[]
+            is_keyword_tokens1=[]
+            is_keyword_tokens2=[]
             masks=[]
 
        
@@ -359,7 +337,7 @@ def collate_fn(examples,with_prior_preservation=False):
             "pixel_values": pixel_values,
             "input_ids": input_ids, # for reconstruction
             "input_ids_masked": input_ids_masked, # for mlm
-            "input_ids_non_mask": input_ids_non_mask, # for mlm
+            "input_ids_pos": input_ids_pos, # for mlm logging
             "masked_idxs": masked_idxs,
             "mlm_labels": mlm_labels,
             "non_special_idxs": non_special_idxs,
@@ -367,7 +345,6 @@ def collate_fn(examples,with_prior_preservation=False):
             "is_keyword_tokens2": is_keyword_tokens2,
             "is_keyword_tokens_mlm1": is_keyword_tokens_mlm1,
             "is_keyword_tokens_mlm2": is_keyword_tokens_mlm2,
-            "is_keyword_tokens": is_keyword_tokens,
             "masks": masks,
         }
         return batch
@@ -805,13 +782,13 @@ def main(args):
         make_composition=args.make_composition,
 
         # prior_preservation
-        class_data_root1=args.class_data_dir1 if args.with_prior_preservation else None,
-        class_data_root2=args.class_data_dir2 if args.with_prior_preservation else None,
-        class_num=args.num_class_images,
-        class_prompt1=args.class_prompt1,
-        class_prompt2=args.class_prompt2,
-        simple_caption=args.simple_caption,
-        mlm_prior=args.mlm_prior,
+        # class_data_root1=args.class_data_dir1 if args.with_prior_preservation else None,
+        # class_data_root2=args.class_data_dir2 if args.with_prior_preservation else None,
+        # class_num=args.num_class_images,
+        # class_prompt1=args.class_prompt1,
+        # class_prompt2=args.class_prompt2,
+        # simple_caption=args.simple_caption,
+        # mlm_prior=args.mlm_prior,
     )
 
     # train_dataloader = torch.utils.data.DataLoader(
@@ -996,7 +973,8 @@ def main(args):
                 )
                 timesteps = timesteps.long()
                 noisy_model_input = noise_scheduler.add_noise(model_input, noise, timesteps)
-                learned_embeds=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_id1) : max(placeholder_token_id1) + 1]
+                learned_embed1=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_id1) : max(placeholder_token_id1) + 1]
+                learned_embed2=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_id2) : max(placeholder_token_id2) + 1]
                 if args.normalize_target1:
                     target_emb1=F.normalize(learned_embed1,p=1,dim=-1)*args.normalize_target1
                 else:
@@ -1005,7 +983,6 @@ def main(args):
                     target_emb2=F.normalize(learned_embed2,p=1,dim=-1)*args.normalize_target2
                 else:
                     target_emb2=learned_embed2
-
                 encoder_hidden_states = text_encoder(input_ids,
                                         is_keyword_tokens1=is_keyword_tokens1,
                                         inj_embeddings1=target_emb1,
@@ -1046,9 +1023,9 @@ def main(args):
                     # Compute prior loss
                     prior_loss = F.mse_loss(model_pred_prior.float(), target_prior.float(), reduction="mean")
 
-                # if args.masked_loss:
-                #     model_pred=(model_pred*mask64)
-                #     target=(target*masks64)
+                if args.masked_loss:
+                    model_pred=(model_pred*mask64)
+                    target=(target*masks64)
 
                 loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
                 if args.with_prior_preservation:
@@ -1070,7 +1047,7 @@ def main(args):
                     mlm_logits=cls_net(clip_text_embedding_mlm)
                     masked_idxs_flat=masked_idxs.view(-1)
                     loss_mlm = F.cross_entropy(
-                        mlm_logits.view(-1,len(orig_embeds_params)),
+                        mlm_logits.view(-1,len(orig_embeds_params)-1),
                         mlm_labels.view(-1),
                         ignore_index=-100,
                         reduction='none'
