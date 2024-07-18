@@ -1,4 +1,5 @@
-from datasets_pkgs.dataset_mlm import TextualInversionDataset
+from datasets_pkgs.dataset_mlm_multi_contrastive import TextualInversionDatasetMulti
+# from datasets_pkgs.dataset_mlm import TextualInversionDataset
 
 from contextlib import nullcontext
 from configs import parse_args
@@ -317,12 +318,15 @@ def collate_fn(examples,with_prior_preservation=False):
             input_ids = [example["input_ids"] for example in examples]
             
             # 2. prior preseravation
-            is_keyword_tokens = [example["is_keyword_tokens"] for example in examples] #N,77, list of booleans
+            is_keyword_tokens1 = [example["is_keyword_tokens1"] for example in examples] #N,77, list of booleans
+            is_keyword_tokens2 = [example["is_keyword_tokens2"] for example in examples] #N,77, list of booleans
             if with_prior_preservation:
                 input_ids += [example["class_prompt_ids"] for example in examples]
-                is_keyword_tokens += [example["is_keyword_tokens_prior"] for example in examples]
+                is_keyword_tokens1 += [example["is_keyword_tokens_prior1"] for example in examples]
+                is_keyword_tokens2 += [example["is_keyword_tokens_prior2"] for example in examples]
                 pixel_values += [example["class_images"] for example in examples]
-            is_keyword_tokens = torch.stack(is_keyword_tokens)
+            is_keyword_tokens1 = torch.stack(is_keyword_tokens1)
+            is_keyword_tokens2 = torch.stack(is_keyword_tokens2)
             input_ids=torch.stack(input_ids)
             pixel_values = torch.stack(pixel_values)
             pixel_values = pixel_values.to(memory_format=torch.contiguous_format).float()
@@ -344,8 +348,10 @@ def collate_fn(examples,with_prior_preservation=False):
         mlm_labels = torch.stack(mlm_labels)
         non_special_idxs = [example["non_special_idxs"] for example in examples] #N,77, list of booleans
         non_special_idxs = torch.stack(non_special_idxs)
-        is_keyword_tokens_mlm = [example["is_keyword_tokens_mlm"] for example in examples] #N,77, list of booleans
-        is_keyword_tokens_mlm = torch.stack(is_keyword_tokens_mlm)
+        is_keyword_tokens_mlm1 = [example["is_keyword_tokens_mlm1"] for example in examples] #N,77, list of booleans
+        is_keyword_tokens_mlm2 = [example["is_keyword_tokens_mlm2"] for example in examples] #N,77, list of booleans
+        is_keyword_tokens_mlm1 = torch.stack(is_keyword_tokens_mlm1)
+        is_keyword_tokens_mlm2 = torch.stack(is_keyword_tokens_mlm2)
         # 5. For MLM 
 
 
@@ -357,7 +363,10 @@ def collate_fn(examples,with_prior_preservation=False):
             "masked_idxs": masked_idxs,
             "mlm_labels": mlm_labels,
             "non_special_idxs": non_special_idxs,
-            "is_keyword_tokens_mlm": is_keyword_tokens_mlm,
+            "is_keyword_tokens1": is_keyword_tokens1,
+            "is_keyword_tokens2": is_keyword_tokens2,
+            "is_keyword_tokens_mlm1": is_keyword_tokens_mlm1,
+            "is_keyword_tokens_mlm2": is_keyword_tokens_mlm2,
             "is_keyword_tokens": is_keyword_tokens,
             "masks": masks,
         }
@@ -596,11 +605,14 @@ def main(args):
 
     # HERE
     mask_tokens = [args.mask_tokens]
-    placeholder_tokens = [args.placeholder_token1]
+    placeholder_token1 = [args.placeholder_token1]
+    placeholder_token2 = [args.placeholder_token2]
     tokenizer.add_tokens(mask_tokens)
     tokenizer.add_tokens(placeholder_tokens)
     mask_token_ids = tokenizer.convert_tokens_to_ids(mask_tokens)
-    placeholder_token_id1 = tokenizer.convert_tokens_to_ids(placeholder_tokens)
+    placeholder_token_id1 = tokenizer.convert_tokens_to_ids(placeholder_token1)
+    placeholder_token_id2 = tokenizer.convert_tokens_to_ids(placeholder_token2)
+
     text_encoder.resize_token_embeddings(len(tokenizer))
     token_embeds = text_encoder.get_input_embeddings().weight.data
     # mask_embeds=token_embeds[mask_token_ids]
@@ -609,15 +621,17 @@ def main(args):
         mask_embeds=F.normalize(mask_embeds,p=1,dim=-1)*args.avg_norm
         mask_embeds=mask_embeds.detach()
     # Add learned concept
-    if args.learned_embed_path1:
+    if args.learned_embed_path1 and args.learned_embed_path2:
         learned_embed1=torch.load(args.learned_embed_path1)#[args.placeholder_token]
-        print('load ti embeddings')
         learned_embed1=learned_embed1[args.placeholder_token1]
+        learned_embed2=torch.load(args.learned_embed_path2)#[args.placeholder_token]
+        learned_embed2=learned_embed2[args.placeholder_token2]
         with torch.no_grad():
             token_embeds[placeholder_token_id1] = learned_embed1.clone()
-        del learned_embed1
+            token_embeds[placeholder_token_id2] = learned_embed2.clone()
+        del learned_embed1,learned_embed2
     from contextnet import ContextNet
-    cls_net=ContextNet(768, len(token_embeds))
+    cls_net=ContextNet(768, len(token_embeds)-1)
     # HERE
     def unwrap_model(model):
         model = accelerator.unwrap_model(model)
@@ -780,7 +794,12 @@ def main(args):
     #     class_prompt_encoder_hidden_states=pre_computed_class_prompt_encoder_hidden_states,
     #     tokenizer_max_length=args.tokenizer_max_length,
     # )
-    train_dataset = TextualInversionDataset(
+
+    prior_concepts=[args.prior_concept1,args.prior_concept2]
+    placeholder_tokens=[args.placeholder_token1,args.placeholder_token2]
+    placeholder_ids=[placeholder_token_id1[0],placeholder_token_id2[0]]
+
+    train_dataset = TextualInversionDatasetMulti(
         include_prior_concept=args.include_prior_concept,
         data_root=args.train_data_dir1,
         tokenizer=tokenizer,
@@ -800,7 +819,7 @@ def main(args):
         simple_caption=args.simple_caption,
         mlm_prior=args.mlm_prior,
     )
-    train_dataset_mlm = TextualInversionDataset(
+    train_dataset_mlm = TextualInversionDatasetMulti(
         include_prior_concept=args.include_prior_concept,
         data_root=args.train_data_dir1,
         tokenizer=tokenizer,
@@ -841,7 +860,7 @@ def main(args):
             collate_fn=lambda examples: collate_fn(examples, args.with_prior_preservation),
             num_workers=4,
         )
-    mlm_loader = cycle(mlm_loader)
+    mlm_loader_multi = cycle(mlm_loader_multi)
     def load_mlm_batch(mlm_loader):
         mlm_data=next(mlm_loader)
         return mlm_data
@@ -865,12 +884,12 @@ def main(args):
 
     # Prepare everything with our `accelerator`.
     if args.train_text_encoder:
-        unet, text_encoder, optimizer, train_dataloader, lr_scheduler,cls_net,mlm_loader = accelerator.prepare(
-            unet, text_encoder, optimizer, train_dataloader, lr_scheduler,cls_net,mlm_loader
+        unet, text_encoder, optimizer, train_dataloader, lr_scheduler,cls_net,mlm_loader_multi = accelerator.prepare(
+            unet, text_encoder, optimizer, train_dataloader, lr_scheduler,cls_net,mlm_loader_multi
         )
     else:
-        unet, optimizer, train_dataloader, lr_scheduler,cls_net,mlm_loader = accelerator.prepare(
-            unet, optimizer, train_dataloader, lr_scheduler,cls_net,mlm_loader
+        unet, optimizer, train_dataloader, lr_scheduler,cls_net,mlm_loader_multi = accelerator.prepare(
+            unet, optimizer, train_dataloader, lr_scheduler,cls_net,mlm_loader_multi
         )
     # ADDED
     if args.cls_net_path is not None:
@@ -982,7 +1001,7 @@ def main(args):
                 masks=batch["masks"]# B,77 list of booleans (tensor)
                 masks64=torch.nn.functional.interpolate(masks,(64,64))
                 # for MLM
-                batch_mlm=load_mlm_batch(mlm_loader)
+                batch_mlm_multi=load_mlm_batch(mlm_loader)
                 is_keyword_tokens_mlm=batch_mlm["is_keyword_tokens_mlm"]
                 masked_idxs=batch_mlm["masked_idxs"]
                 mlm_labels=batch_mlm["mlm_labels"].to(accelerator.device)

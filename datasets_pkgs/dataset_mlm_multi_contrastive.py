@@ -113,6 +113,12 @@ class TextualInversionDatasetMulti(Dataset):
         placeholder_ids=[],
         prior_concepts="*",
         make_composition=True,
+        # Added
+        class_num=None,
+        class_data_root=None,
+        class_prompt=None,
+        simple_caption=False,
+        mlm_prior=0,
 
     ):
         self.make_composition = make_composition
