@@ -72,6 +72,41 @@ prefixes=[
     "a photo of cool {}",
     "a photo of small {}",
 ]
+junctions=[
+            "displayed alongside",
+            "displayed next to",
+            "exhibited with",
+            "exhibited next to",
+            "shown next to",
+            "presented with",
+            "featured with",
+            "positioned beside",
+            "accompanied with",
+            "placed adjacent to",
+            "arranged with",
+            "paired alongside",
+            "set against",
+            "aligned with",
+            "juxtaposed with",
+            "matched with",
+            "grouped with",
+            "associated next to",
+            "framed with",
+            "with",
+            "next to",
+            "shown with",
+            "alongside",
+            "shown next to",
+            "adjacent to",
+            "together with",
+            "accompanied by",
+            "in proximity to",
+            "in collaboration with",
+            "associated with",
+            "in partnership with",
+            "in relation to",
+            "displayed with",
+            "near by"]
 
 if version.parse(version.parse(PIL.__version__).base_version) >= version.parse("9.1.0"):
     PIL_INTERPOLATION = {
@@ -158,42 +193,8 @@ class TextualInversionDatasetMulti(Dataset):
 
         # self.templates = imagenet_style_templates_small if learnable_property == "style" else imagenet_templates_small
         # self.flip_transform = transforms.RandomHorizontalFlip(p=self.flip_p)
-        self.junctions=[
-            "displayed alongside",
-            "displayed next to",
-            "exhibited with",
-            "exhibited next to",
-            "shown next to",
-            "presented with",
-            "featured with",
-            "positioned beside",
-            "accompanied with",
-            "placed adjacent to",
-            "arranged with",
-            "paired alongside",
-            "set against",
-            "aligned with",
-            "juxtaposed with",
-            "matched with",
-            "grouped with",
-            "associated next to",
-            "framed with",
-            "with",
-            "next to",
-            "shown with",
-            "alongside",
-            "shown next to",
-            "adjacent to",
-            "together with",
-            "accompanied by",
-            "in proximity to",
-            "in collaboration with",
-            "associated with",
-            "in partnership with",
-            "in relation to",
-            "displayed with",
-            "near by"]
-        self.junctions=list(set(self.junctions))
+        
+        self.junctions=list(set(junctions))
     def __len__(self):
         return self._length
 
@@ -202,11 +203,8 @@ class TextualInversionDatasetMulti(Dataset):
         example = {}
         # 3. MLM
         caption=self.prompt_generator_multi.generate_caption()
-
         sampled_junction=np.random.choice(self.junctions)
         caption=caption.replace('[JUNCTION]',sampled_junction)
-
-
         if self.include_prior_concept:
             placeholder1='{} {}'.format(self.placeholder_tokens[0],self.prior_concepts[0])
             placeholder2='{} {}'.format(self.placeholder_tokens[1],self.prior_concepts[1])

@@ -403,9 +403,9 @@ def parse_args(input_args=None):
             raise ValueError("You must specify prompt for class images.")
     else:
         # logger is not available yet
-        if args.class_data_dir is not None:
+        if args.class_data_dir1 is not None:
             warnings.warn("You need not use --class_data_dir without --with_prior_preservation.")
-        if args.class_prompt is not None:
+        if args.class_prompt1 is not None:
             warnings.warn("You need not use --class_prompt without --with_prior_preservation.")
 
     if args.train_text_encoder and args.pre_compute_text_embeddings:

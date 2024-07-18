@@ -1,8 +1,8 @@
 export MODEL_NAME="runwayml/stable-diffusion-v1-5"
 export DATA_DIR1="/data/twkim/diffusion/personalization/collected/images/pet_cat1"
 export DATA_DIR2="/data/twkim/diffusion/personalization/collected/images/pet_dog1"
-export CUDA_VISIBLE_DEVICES=1;
-accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
+export CUDA_VISIBLE_DEVICES=2;
+accelerate launch --main_process_port 4232  train_dreambooth_multi_mlm.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
   --train_data_dir1=$DATA_DIR1 \
   --train_data_dir2=$DATA_DIR2 \
@@ -18,7 +18,7 @@ accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
   --mask_embed_path='saved_models/mlm_contextnet_nonpad_lr1e4/checkpoints/mask_embeds_99000_ckpt.pt' \
   --mlm_target='masked' \
   --mlm_batch_size=20 \
-  --run_name='tmp_with_ti_multi' \
+  --run_name='pet_cat1_pet_dog1_multi_mlm0001_sim0_scratch' \
   --prompt_type='two_pets' \
   --include_prior_concept=1 \
   --train_text_encoder \
@@ -40,10 +40,9 @@ accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
 export MODEL_NAME="runwayml/stable-diffusion-v1-5"
 export DATA_DIR1="/data/twkim/diffusion/personalization/collected/images/pet_cat1"
 export DATA_DIR2="/data/twkim/diffusion/personalization/collected/images/pet_dog1"
-export CUDA_VISIBLE_DEVICES=4;
+export CUDA_VISIBLE_DEVICES=3;
 accelerate launch --main_process_port 5123  train_dreambooth_multi_mlm.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
-  --train_data_dir1=$DATA_DIR1 \
   --train_data_dir2=$DATA_DIR2 \
   --train_batch_size=1 \
   --gradient_accumulation_steps=1 \
@@ -57,13 +56,14 @@ accelerate launch --main_process_port 5123  train_dreambooth_multi_mlm.py \
   --mask_embed_path='saved_models/mlm_contextnet_nonpad_lr1e4/checkpoints/mask_embeds_99000_ckpt.pt' \
   --mlm_target='masked' \
   --mlm_batch_size=20 \
-  --run_name='pet_cat1_pet_dog1_nocompose_nomasked' \
+  --run_name='pet_cat1_pet_dog1_multi_mlm0001_sim0_nomask_nocompose_scratch' \
   --prompt_type='two_pets' \
   --include_prior_concept=1 \
   --train_text_encoder \
   --validation_steps=100 \
   --with_prior_preservation=1 \
   --placeholder_token1="<pet_cat1>" \
+  --train_data_dir1=$DATA_DIR1 \
   --class_prompt1="a picture of a cat" \
   --class_data_dir1="priors/cat" \
   --prior_concept1="cat" \

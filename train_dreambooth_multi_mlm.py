@@ -1103,7 +1103,6 @@ def main(args):
                         sim=pairwise_cosine_similarity(key_embs1,key_embs2,reduction='mean')
                         simlist.append(sim)
                     simlist=torch.cat(simlist)
-                    loss_sim_log=simlist.detach().abs().mean()
                     if args.sim_margin:
                         simlist_margin=torch.clip(simlist.abs()-args.sim_margin,min=0)
                         if torch.sum(simlist_margin>0):
@@ -1114,6 +1113,8 @@ def main(args):
                     else:
                         loss_sim=simlist.abs().mean() 
                         loss+=(loss_sim*args.lambda_sim)
+                    loss_sim_log=simlist.detach().abs().mean()
+                    
             # Checks if the accelerator has performed an optimization step behind the scenes
             if accelerator.sync_gradients:
                 
