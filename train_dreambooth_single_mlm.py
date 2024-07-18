@@ -600,7 +600,7 @@ def main(args):
     tokenizer.add_tokens(mask_tokens)
     tokenizer.add_tokens(placeholder_tokens)
     mask_token_ids = tokenizer.convert_tokens_to_ids(mask_tokens)
-    placeholder_token_ids = tokenizer.convert_tokens_to_ids(placeholder_tokens)
+    placeholder_token_id1 = tokenizer.convert_tokens_to_ids(placeholder_tokens)
     text_encoder.resize_token_embeddings(len(tokenizer))
     token_embeds = text_encoder.get_input_embeddings().weight.data
     # mask_embeds=token_embeds[mask_token_ids]
@@ -608,9 +608,14 @@ def main(args):
         mask_embeds=torch.load(args.mask_embed_path)[args.mask_tokens].to(accelerator.device)
         mask_embeds=F.normalize(mask_embeds,p=1,dim=-1)*args.avg_norm
         mask_embeds=mask_embeds.detach()
-    # with torch.no_grad():
-    #     for token_id in placeholder_token_ids:
-    #         token_embeds[token_id] = F.normalize(token_embeds[token_id].clone(),p=1,dim=-1)*args.avg_norm
+    # Add learned concept
+    if args.learned_embed_path1:
+        learned_embed1=torch.load(args.learned_embed_path1)#[args.placeholder_token]
+        print('load ti embeddings')
+        learned_embed1=learned_embed1[args.placeholder_token1]
+        with torch.no_grad():
+            token_embeds[placeholder_token_id1] = learned_embed1.clone()
+        del learned_embed1
     from contextnet import ContextNet
     cls_net=ContextNet(768, len(token_embeds))
     # HERE
@@ -780,7 +785,7 @@ def main(args):
         data_root=args.train_data_dir1,
         tokenizer=tokenizer,
         size=args.resolution,
-        placeholder_token=(" ".join(tokenizer.convert_ids_to_tokens(placeholder_token_ids))),
+        placeholder_token=(" ".join(tokenizer.convert_ids_to_tokens(placeholder_token_id1))),
         repeats=args.repeats,
         center_crop=args.center_crop,
         flip_p=args.flip_p,
@@ -800,7 +805,7 @@ def main(args):
         data_root=args.train_data_dir1,
         tokenizer=tokenizer,
         size=args.resolution,
-        placeholder_token=(" ".join(tokenizer.convert_ids_to_tokens(placeholder_token_ids))),
+        placeholder_token=(" ".join(tokenizer.convert_ids_to_tokens(placeholder_token_id1))),
         repeats=args.repeats,
         center_crop=args.center_crop,
         flip_p=args.flip_p,
@@ -996,7 +1001,7 @@ def main(args):
                 )
                 timesteps = timesteps.long()
                 noisy_model_input = noise_scheduler.add_noise(model_input, noise, timesteps)
-                learned_embeds=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_ids) : max(placeholder_token_ids) + 1]
+                learned_embeds=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_id1) : max(placeholder_token_id1) + 1]
                 if args.normalize_target1:
                     target_emb=F.normalize(learned_embeds,p=1,dim=-1)*args.normalize_target1
                 else:
@@ -1085,7 +1090,7 @@ def main(args):
                     # no train then do not update token embeddings
                     # except the placeholder
                     index_no_updates = torch.ones((len(tokenizer),), dtype=torch.bool)
-                    index_no_updates[min(placeholder_token_ids) : max(placeholder_token_ids) + 1] = False #everything except placeholder
+                    index_no_updates[min(placeholder_token_id1) : max(placeholder_token_id1) + 1] = False #everything except placeholder
                     with torch.no_grad():
                         accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[
                             index_no_updates

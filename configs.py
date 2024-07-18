@@ -5,6 +5,10 @@ import argparse
 def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     # ADDED
+    parser.add_argument('--learned_embed_path1',type=str)
+    parser.add_argument('--learned_embed_path2',type=str)
+    parser.add_argument('--learned_embed_path_multi',type=str)
+    
     parser.add_argument('--placeholder_token1',type=str)
     parser.add_argument('--placeholder_token2',type=str)
     parser.add_argument('--prior_concept1',type=str)
