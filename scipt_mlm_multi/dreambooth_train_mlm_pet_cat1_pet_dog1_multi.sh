@@ -4,7 +4,6 @@ export CUDA_VISIBLE_DEVICES=1;
 accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
   --train_data_dir1=$DATA_DIR \
-  --prior_concept1="dog" \
   --resolution=512 \
   --train_batch_size=1 \
   --gradient_accumulation_steps=1 \
@@ -32,6 +31,8 @@ accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
   --class_data_dir1="priors/cat" \
   --class_prompt2="a picture of a dog" \
   --class_data_dir2="priors/dog" \
+  --prior_concept1="cat" \
+  --prior_concept2="dog" \
   --simple_caption=1 \
   --make_composition=1 \
   --masked_loss=1

@@ -295,8 +295,6 @@ def collate_fn(examples,with_prior_preservation=False):
             # 2. prior preseravation
             is_keyword_tokens1 = [example["is_keyword_tokens1"] for example in examples] #N,77, list of booleans
             is_keyword_tokens2 = [example["is_keyword_tokens2"] for example in examples] #N,77, list of booleans
-            for example in examples:
-                print(example.keys(),'example.keys()')
             if with_prior_preservation:
                 input_ids += [example["class_prompt_ids"] for example in examples]
                 is_keyword_tokens1 += [example["is_keyword_tokens_prior"] for example in examples]
@@ -1025,7 +1023,7 @@ def main(args):
 
                 if args.masked_loss:
                     model_pred=(model_pred*mask64)
-                    target=(target*masks64)
+                    target=(target*mask64)
 
                 loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
                 if args.with_prior_preservation:
@@ -1252,6 +1250,7 @@ def main(args):
                             print(dots)
                             print('Key1\t\t|{}'.format(decoded_key1))
                             print('Key2\t\t|{}'.format(decoded_key2))
+                            print(dots)
                             print(dots)
                             print()
                             # 1. MLM Result Logging
