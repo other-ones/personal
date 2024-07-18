@@ -5,6 +5,7 @@ import argparse
 def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     # ADDED
+    parser.add_argument('--dissim_layers',type=str,default='1to12')
     parser.add_argument('--make_composition',type=int,required=False)
     parser.add_argument("--class_data_dir1",type=str,default=None,required=False,help="A folder containing the training data of class images.")
     parser.add_argument("--class_data_dir2",type=str,default=None,required=False,help="A folder containing the training data of class images.")
@@ -110,7 +111,7 @@ def parse_args(input_args=None):
         default="dreambooth-model",
         help="The output directory where the model predictions and checkpoints will be written.",
     )
-    parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
+    parser.add_argument("--seed", type=int, default=7777, help="A seed for reproducible training.")
     parser.add_argument(
         "--resolution",
         type=int,
