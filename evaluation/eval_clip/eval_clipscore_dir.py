@@ -70,7 +70,6 @@ if __name__ == "__main__":
         for exp in exps:
             if target_keyword is not None and (target_keyword not in exp):
                 continue
-            print(exp)
             exp_path=os.path.join(concept_path,exp)
             pred_root=os.path.join(exp_path,'generated')
             result_path=os.path.join(exp_path, 'clip.json')
