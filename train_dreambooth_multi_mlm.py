@@ -1,3 +1,4 @@
+from torchmetrics.functional.pairwise import pairwise_cosine_similarity
 from datasets_pkgs.dataset_mlm_multi_contrastive import TextualInversionDatasetMulti
 # from datasets_pkgs.dataset_mlm import TextualInversionDataset
 
@@ -997,17 +998,19 @@ def main(args):
                 # Load Batch
                 pixel_values = batch["pixel_values"].to(dtype=weight_dtype)
                 input_ids=batch["input_ids"]# B,77 list of booleans (tensor)
-                is_keyword_tokens=batch["is_keyword_tokens"]# B,77 list of booleans (tensor)
                 masks=batch["masks"]# B,77 list of booleans (tensor)
-                masks64=torch.nn.functional.interpolate(masks,(64,64))
+                mask64=torch.nn.functional.interpolate(masks,(64,64))
+                is_keyword_tokens1=batch["is_keyword_tokens1"]# B,77 list of booleans (tensor)
+                is_keyword_tokens2=batch["is_keyword_tokens2"]# B,77 list of booleans (tensor)
                 # for MLM
-                batch_mlm_multi=load_mlm_batch(mlm_loader)
-                is_keyword_tokens_mlm=batch_mlm["is_keyword_tokens_mlm"]
-                masked_idxs=batch_mlm["masked_idxs"]
-                mlm_labels=batch_mlm["mlm_labels"].to(accelerator.device)
-                non_special_idxs=batch_mlm["non_special_idxs"]
-                input_ids_masked=batch_mlm["input_ids_masked"].to(accelerator.device)
-                input_ids_non_mask=batch_mlm["input_ids_non_mask"].to(accelerator.device)
+                batch_mlm_multi=load_mlm_batch(mlm_loader_multi)
+                input_ids_pos=batch_mlm_multi["input_ids_pos"].to(accelerator.device)# B,77 list of booleans (tensor)
+                masked_idxs=batch_mlm_multi["masked_idxs"]
+                mlm_labels=batch_mlm_multi["mlm_labels"].to(accelerator.device)
+                non_special_idxs=batch_mlm_multi["non_special_idxs"]
+                input_ids_masked=batch_mlm_multi["input_ids_masked"].to(accelerator.device)
+                is_keyword_tokens_mlm1=batch_mlm_multi["is_keyword_tokens_mlm1"].to(accelerator.device)
+                is_keyword_tokens_mlm2=batch_mlm_multi["is_keyword_tokens_mlm2"].to(accelerator.device)
                 # for MLM
                 # Load Batch
 
@@ -1022,14 +1025,20 @@ def main(args):
                 noisy_model_input = noise_scheduler.add_noise(model_input, noise, timesteps)
                 learned_embeds=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_id1) : max(placeholder_token_id1) + 1]
                 if args.normalize_target1:
-                    target_emb=F.normalize(learned_embeds,p=1,dim=-1)*args.normalize_target1
+                    target_emb1=F.normalize(learned_embed1,p=1,dim=-1)*args.normalize_target1
                 else:
-                    target_emb=learned_embeds
-                encoder_hidden_states = text_encoder(
-                                                    input_ids,
-                                                    is_keyword_tokens1=is_keyword_tokens,
-                                                    inj_embeddings1=target_emb,
-                                                     )[0].to(dtype=weight_dtype)
+                    target_emb1=learned_embed1
+                if args.normalize_target2:
+                    target_emb2=F.normalize(learned_embed2,p=1,dim=-1)*args.normalize_target2
+                else:
+                    target_emb2=learned_embed2
+
+                encoder_hidden_states = text_encoder(input_ids,
+                                        is_keyword_tokens1=is_keyword_tokens1,
+                                        inj_embeddings1=target_emb1,
+                                        is_keyword_tokens2=is_keyword_tokens2,
+                                        inj_embeddings2=target_emb2,
+                                        )[0].to(dtype=weight_dtype)
                 if unwrap_model(unet).config.in_channels == channels * 2:
                     noisy_model_input = torch.cat([noisy_model_input, noisy_model_input], dim=1)
                 if args.class_labels_conditioning == "timesteps":
@@ -1065,7 +1074,7 @@ def main(args):
                     prior_loss = F.mse_loss(model_pred_prior.float(), target_prior.float(), reduction="mean")
 
                 # if args.masked_loss:
-                #     model_pred=(model_pred*masks64)
+                #     model_pred=(model_pred*mask64)
                 #     target=(target*masks64)
 
                 loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
@@ -1076,13 +1085,16 @@ def main(args):
                 # 3. MLM Loss
                 loss_mlm=None
                 if args.lambda_mlm:
-                    clip_text_embedding_masked = text_encoder(input_ids_masked,
-                                                            mask_embedding=mask_embeds.unsqueeze(0),
-                                                            mask_idxs=masked_idxs,
-                                                            is_keyword_tokens1=is_keyword_tokens_mlm,
-                                                            inj_embeddings1=target_emb,
-                                                            )[0].to(accelerator.device, dtype=weight_dtype)
-                    mlm_logits=cls_net(clip_text_embedding_masked)
+                    text_encodings_mlm = text_encoder(input_ids_masked,
+                                                  mask_embedding=mask_embeds.unsqueeze(0),
+                                                  mask_idxs=masked_idxs,
+                                                  is_keyword_tokens1=is_keyword_tokens_mlm1,
+                                                  is_keyword_tokens2=is_keyword_tokens_mlm2,
+                                                  inj_embeddings1=target_emb1,
+                                                  inj_embeddings2=target_emb2,
+                                                  output_hidden_states=True)#.to(dtype=weight_dtype)
+                    clip_text_embedding_mlm=text_encodings_mlm.last_hidden_state.to(accelerator.device)
+                    mlm_logits=cls_net(clip_text_embedding_mlm)
                     masked_idxs_flat=masked_idxs.view(-1)
                     loss_mlm = F.cross_entropy(
                         mlm_logits.view(-1,len(orig_embeds_params)),
@@ -1119,6 +1131,41 @@ def main(args):
                         accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[
                             mask_token_ids
                         ] = mask_embeds
+                loss_sim=None
+                loss_sim_log=None
+                if args.lambda_sim:
+                    hidden_states_list=text_encodings_mlm.hidden_states
+                    if args.dissim_layers=='last':
+                        dissim_layers=[len(hidden_states_list)-1] 
+                    elif args.dissim_layers=='all':
+                        dissim_layers=np.arange(len(hidden_states_list)).tolist()
+                    elif 'to' in args.dissim_layers:
+                        first=int(args.dissim_layers.split('to')[0])
+                        last=int(args.dissim_layers.split('to')[1])
+                        dissim_layers=np.arange(len(hidden_states_list))[first:last+1]
+                    else:
+                        dissim_layers=np.array(args.dissim_layers.split(',')).astype(np.int32)
+                    simlist=[]
+                    for hidx,hidden_states in enumerate(hidden_states_list):
+                        if hidx not in dissim_layers:
+                            continue
+                        hidden_states=hidden_states.to(accelerator.device)
+                        key_embs1=hidden_states[is_keyword_tokens_mlm1]
+                        key_embs2=hidden_states[is_keyword_tokens_mlm2]
+                        sim=pairwise_cosine_similarity(key_embs1,key_embs2,reduction='mean')
+                        simlist.append(sim)
+                    simlist=torch.cat(simlist)
+                    loss_sim_log=simlist.detach().abs().mean()
+                    if args.sim_margin:
+                        simlist_margin=torch.clip(simlist.abs()-args.sim_margin,min=0)
+                        if torch.sum(simlist_margin>0):
+                            loss_sim=simlist_margin[torch.where(simlist_margin>0)].mean()    
+                            loss+=(loss_sim*args.lambda_sim)
+                        else:
+                            print('here')
+                    else:
+                        loss_sim=simlist.abs().mean() 
+                        loss+=(loss_sim*args.lambda_sim)
             # Checks if the accelerator has performed an optimization step behind the scenes
             if accelerator.sync_gradients:
                 
@@ -1200,19 +1247,32 @@ def main(args):
                         # visualize input
                         if args.lambda_mlm:
                             # 1. MLM Result Logging
+                            is_keyword_tokens_mlm1=is_keyword_tokens_mlm1
+                            is_keyword_tokens_mlm2=is_keyword_tokens_mlm2
+                            input_ids_key1=input_ids_pos[is_keyword_tokens_mlm1][:5]
+                            input_ids_key2=input_ids_pos[is_keyword_tokens_mlm2][:5]
+                            decoded_key1=tokenizer.batch_decode(input_ids_key1)
+                            decoded_key2=tokenizer.batch_decode(input_ids_key2)
+                            decoded_key1_list=[]
+                            decoded_key2_list=[]
+                            for dec1 in decoded_key1:
+                                decoded_key1_list.append('{:8}'.format(dec1))
+                            for dec2 in decoded_key2:
+                                decoded_key2_list.append('{:8}'.format(dec2))
+                            decoded_key1=' '.join(decoded_key1_list)
+                            decoded_key2=' '.join(decoded_key2_list)
                             viz_idx=0
                             masked_idxs=masked_idxs.detach().cpu().numpy()[viz_idx:viz_idx+1]
                             non_special_idxs=non_special_idxs.detach().cpu()[viz_idx:viz_idx+1]
                             mlm_logits=mlm_logits.argmax(-1).detach().cpu().numpy()[viz_idx:viz_idx+1]#1,77
-                            input_ids_non_mask=input_ids_non_mask[viz_idx:viz_idx+1]
+                            input_ids_pos=input_ids_pos[viz_idx:viz_idx+1]
+                            
                             input_ids_masked=input_ids_masked[viz_idx:viz_idx+1]
-
-                            input_ids_non_mask=input_ids_non_mask[non_special_idxs]
+                            input_ids_pos=input_ids_pos[non_special_idxs]
                             input_ids_masked=input_ids_masked[non_special_idxs]
                             mlm_logits=mlm_logits[non_special_idxs]
                             masked_idxs=masked_idxs[non_special_idxs]
-
-                            decoded=tokenizer.batch_decode(input_ids_non_mask)
+                            decoded=tokenizer.batch_decode(input_ids_pos)
                             decoded_masked=tokenizer.batch_decode(input_ids_masked)
                             decoded_logits=tokenizer.batch_decode(mlm_logits)
                             decoded_list=[]
@@ -1222,7 +1282,6 @@ def main(args):
                                 if m:
                                     decoded_list.append('{:10}'.format('M[{}]'.format(d1)))
                                     decoded_masked_list.append('{:10}'.format(d2))
-                                    # decoded_masked_list.append('{:12}'.format('M[{}]'.format(d2)))
                                     decoded_logits_list.append('{:10}'.format('M[{}]'.format(d3)))
                                 else:
                                     decoded_list.append('{:10}'.format(d1))
@@ -1231,7 +1290,7 @@ def main(args):
                             decoded=' '.join(decoded_list)
                             decoded_masked=' '.join(decoded_masked_list)
                             decoded_logits=' '.join(decoded_logits_list)
-                            dots='-'*100
+                            dots='-'*150
                             print()
                             print()
                             print(dots)
@@ -1241,6 +1300,8 @@ def main(args):
                             print('Masked\t\t|{}'.format(decoded_masked))
                             print('Preds\t\t|{}'.format(decoded_logits))
                             print(dots)
+                            print('Key1\t\t|{}'.format(decoded_key1))
+                            print('Key2\t\t|{}'.format(decoded_key2))
                             print(dots)
                             print()
                             # 1. MLM Result Logging
@@ -1248,10 +1309,15 @@ def main(args):
             logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             if loss_mlm is not None:
                 logs['loss_mlm']=loss_mlm.detach().item()
-            norm_target=torch.norm(target_emb.detach(),p=1,dim=-1)
+            if loss_sim_log is not None:
+                logs['loss_sim']=loss_sim_log.detach().item()
+            
+            norm_target1=torch.norm(target_emb1.detach(),p=1,dim=-1)
+            norm_target2=torch.norm(target_emb2.detach(),p=1,dim=-1)
             norm_mask=torch.norm(mask_embeds,p=1,dim=-1)
             logs['norm_mask']=norm_mask.item()
-            logs['norm_target']=norm_target.item()
+            logs['norm_target1']=norm_target1.item()
+            logs['norm_target2']=norm_target2.item()
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
             progress_bar.update(1)
@@ -1277,7 +1343,6 @@ def main(args):
             variant=args.variant,
             **pipeline_args,
         )
-
         # We train on the simplified learning objective. If we were previously predicting a variance, we need the scheduler to ignore it
         scheduler_args = {}
 
@@ -1288,26 +1353,8 @@ def main(args):
                 variance_type = "fixed_small"
 
             scheduler_args["variance_type"] = variance_type
-
         pipeline.scheduler = pipeline.scheduler.from_config(pipeline.scheduler.config, **scheduler_args)
 
-        # pipeline.save_pretrained(args.output_dir)
-        # if args.push_to_hub:
-        #     save_model_card(
-        #         repo_id,
-        #         images=images,
-        #         base_model=args.pretrained_model_name_or_path,
-        #         train_text_encoder=args.train_text_encoder,
-        #         prompt=args.instance_prompt,
-        #         repo_folder=args.output_dir,
-        #         pipeline=pipeline,
-        #     )
-        #     upload_folder(
-        #         repo_id=repo_id,
-        #         folder_path=args.output_dir,
-        #         commit_message="End of training",
-        #         ignore_patterns=["step_*", "epoch_*"],
-        #     )
 
     accelerator.end_training()
 

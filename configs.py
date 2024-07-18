@@ -1,14 +1,17 @@
-import os
+ os
 import warnings
 import argparse
 
 def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     # ADDED
+    parser.add_argument("--class_data_dir1",type=str,default=None,required=False,help="A folder containing the training data of class images.")
+    parser.add_argument("--class_data_dir2",type=str,default=None,required=False,help="A folder containing the training data of class images.")
+    parser.add_argument("--class_prompt1",type=str,default=None,help="The prompt to specify images in the same class as provided instance images.",)
+    parser.add_argument("--class_prompt2",type=str,default=None,help="The prompt to specify images in the same class as provided instance images.",)
     parser.add_argument('--learned_embed_path1',type=str)
     parser.add_argument('--learned_embed_path2',type=str)
     parser.add_argument('--learned_embed_path_multi',type=str)
-    
     parser.add_argument('--placeholder_token1',type=str)
     parser.add_argument('--placeholder_token2',type=str)
     parser.add_argument('--prior_concept1',type=str)
@@ -80,13 +83,7 @@ def parse_args(input_args=None):
         required=False,
         help="A folder containing the training data of instance images.",
     )
-    parser.add_argument(
-        "--class_data_dir",
-        type=str,
-        default=None,
-        required=False,
-        help="A folder containing the training data of class images.",
-    )
+    
     parser.add_argument(
         "--instance_prompt",
         type=str,
@@ -94,12 +91,7 @@ def parse_args(input_args=None):
         required=False,
         help="The prompt with identifier specifying the instance",
     )
-    parser.add_argument(
-        "--class_prompt",
-        type=str,
-        default=None,
-        help="The prompt to specify images in the same class as provided instance images.",
-    )
+    
     
     parser.add_argument("--prior_loss_weight", type=float, default=1.0, help="The weight of prior preservation loss.")
     parser.add_argument(
