@@ -490,52 +490,7 @@ def main(args):
     if args.seed is not None:
         set_seed(args.seed)
 
-    # Generate class images if prior preservation is enabled.
-    if args.with_prior_preservation:
-        class_images_dir = Path(args.class_data_dir)
-        if not class_images_dir.exists():
-            class_images_dir.mkdir(parents=True)
-        cur_class_images = len(list(class_images_dir.iterdir()))
-
-        if cur_class_images < args.num_class_images:
-            torch_dtype = torch.float16 if accelerator.device.type == "cuda" else torch.float32
-            if args.prior_generation_precision == "fp32":
-                torch_dtype = torch.float32
-            elif args.prior_generation_precision == "fp16":
-                torch_dtype = torch.float16
-            elif args.prior_generation_precision == "bf16":
-                torch_dtype = torch.bfloat16
-            pipeline = DiffusionPipeline.from_pretrained(
-                args.pretrained_model_name_or_path,
-                torch_dtype=torch_dtype,
-                safety_checker=None,
-                revision=args.revision,
-                variant=args.variant,
-            )
-            pipeline.set_progress_bar_config(disable=True)
-
-            num_new_images = args.num_class_images - cur_class_images
-            logger.info(f"Number of class images to sample: {num_new_images}.")
-
-            sample_dataset = PromptDataset(args.class_prompt, num_new_images)
-            sample_dataloader = torch.utils.data.DataLoader(sample_dataset, batch_size=args.sample_batch_size)
-
-            sample_dataloader = accelerator.prepare(sample_dataloader)
-            pipeline.to(accelerator.device)
-
-            for example in tqdm(
-                sample_dataloader, desc="Generating class images", disable=not accelerator.is_local_main_process
-            ):
-                images = pipeline(example["prompt"]).images
-
-                for i, image in enumerate(images):
-                    hash_image = insecure_hashlib.sha1(image.tobytes()).hexdigest()
-                    image_filename = class_images_dir / f"{example['index'][i] + cur_class_images}-{hash_image}.jpg"
-                    image.save(image_filename)
-
-            del pipeline
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+    
 
     # Handle the repository creation
     if accelerator.is_main_process:
@@ -802,10 +757,8 @@ def main(args):
 
     train_dataset = TextualInversionDatasetMulti(
         include_prior_concept=args.include_prior_concept,
-        data_root=args.train_data_dir1,
         tokenizer=tokenizer,
         size=args.resolution,
-        placeholder_token=(" ".join(tokenizer.convert_ids_to_tokens(placeholder_token_id1))),
         repeats=args.repeats,
         center_crop=args.center_crop,
         flip_p=args.flip_p,
@@ -814,9 +767,21 @@ def main(args):
         mlm_target=args.mlm_target,
         get_images=True,
         prompt_type=args.prompt_type,
-        class_data_root=args.class_data_dir if args.with_prior_preservation else None,
+        
+        # multi
+        data_root1=args.train_data_dir1,
+        data_root2=args.train_data_dir1,
+        placeholder_tokens=placeholder_tokens,
+        placeholder_ids=placeholder_ids,
+        prior_concepts=prior_concepts,
+        make_composition=args.make_composition,
+
+        # prior_preservation
+        class_data_root1=args.class_data_dir1 if args.with_prior_preservation else None,
+        class_data_root2=args.class_data_dir2 if args.with_prior_preservation else None,
         class_num=args.num_class_images,
-        class_prompt=args.class_prompt,
+        class_prompt1=args.class_prompt1,
+        class_prompt2=args.class_prompt2,
         simple_caption=args.simple_caption,
         mlm_prior=args.mlm_prior,
     )
@@ -825,7 +790,6 @@ def main(args):
         data_root=args.train_data_dir1,
         tokenizer=tokenizer,
         size=args.resolution,
-        placeholder_token=(" ".join(tokenizer.convert_ids_to_tokens(placeholder_token_id1))),
         repeats=args.repeats,
         center_crop=args.center_crop,
         flip_p=args.flip_p,
@@ -834,11 +798,21 @@ def main(args):
         mlm_target=args.mlm_target,
         get_images=False,
         prompt_type=args.prompt_type,
+
+        # multi
+        placeholder_tokens=placeholder_tokens,
+        placeholder_ids=placeholder_ids,
+        prior_concepts=prior_concepts,
+        make_composition=args.make_composition,
+
+        # prior_preservation
+        class_data_root1=args.class_data_dir1 if args.with_prior_preservation else None,
+        class_data_root2=args.class_data_dir2 if args.with_prior_preservation else None,
+        class_num=args.num_class_images,
+        class_prompt1=args.class_prompt1,
+        class_prompt2=args.class_prompt2,
         simple_caption=args.simple_caption,
         mlm_prior=args.mlm_prior,
-        # class_data_root=args.class_data_dir if args.with_prior_preservation else None,
-        # class_num=args.num_class_images,
-        # class_prompt=args.class_prompt,
     )
 
     # train_dataloader = torch.utils.data.DataLoader(

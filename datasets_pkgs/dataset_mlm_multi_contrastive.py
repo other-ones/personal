@@ -41,7 +41,42 @@ roi_mask_transforms = transforms.Compose(
     ]
 )
 
-
+junctions=[
+            "displayed alongside",
+            "displayed next to",
+            "exhibited with",
+            "exhibited next to",
+            "shown next to",
+            "presented with",
+            "featured with",
+            "positioned beside",
+            "accompanied with",
+            "placed adjacent to",
+            "arranged with",
+            "paired alongside",
+            "set against",
+            "aligned with",
+            "juxtaposed with",
+            "matched with",
+            "grouped with",
+            "associated next to",
+            "framed with"
+            "with",
+            "next to",
+            "shown with",
+            "alongside",
+            "shown next to",
+            "adjacent to",
+            "together with",
+            "accompanied by",
+            "in proximity to",
+            "in collaboration with",
+            "associated with",
+            "in partnership with",
+            "in relation to",
+            "displayed with",
+            "near by"
+                        ]
 # Generate captions by combining elements from each list with different formats
 prefixes=[
     "a photo of a {}",
@@ -93,11 +128,9 @@ else:
 class TextualInversionDatasetMulti(Dataset):
     def __init__(
         self,
-        data_root1,
-        data_root2,
+        
         tokenizer,
         include_prior_concept,
-        learnable_property="object",  # [object, style]
         size=512,
         repeats=100,
         interpolation="bicubic",
@@ -109,24 +142,48 @@ class TextualInversionDatasetMulti(Dataset):
         mask_token_ids=None,
         get_images=True,
         prompt_type=None,
+        
+        
+        # multi
         placeholder_tokens=[],
         placeholder_ids=[],
+        data_root1=None,
+        data_root2=None,
         prior_concepts="*",
         make_composition=True,
-        # Added
+
+        # prior_preservation
         class_num=None,
-        class_data_root=None,
-        class_prompt=None,
+        class_data_root1=None,
+        class_data_root2=None,
+        class_prompt1=None,
+        class_prompt2=None,
         simple_caption=False,
         mlm_prior=0,
 
     ):
-        self.make_composition = make_composition
-        self.placeholder_ids = placeholder_ids
+        # multi
         self.placeholder_tokens = placeholder_tokens
+        self.placeholder_ids = placeholder_ids
+        self.data_root1 = data_root1
+        self.data_root2 = data_root2
         self.prior_concepts = prior_concepts
+        self.make_composition = make_composition
         print(placeholder_tokens,'placeholder_tokens')
         print(prior_concepts,'prior_concepts')
+
+        # prior_preservation
+        self.class_num = class_num
+        self.class_data_root1 = class_data_root1
+        self.class_data_root2 = class_data_root2
+        self.class_prompt1 = class_prompt1
+        self.class_prompt2 = class_prompt2
+        self.simple_caption = simple_caption
+        self.mlm_prior = mlm_prior
+
+        
+
+
         self.prompt_type=prompt_type
         self.include_prior_concept=include_prior_concept
         if prompt_type=='two_pets':
@@ -142,15 +199,13 @@ class TextualInversionDatasetMulti(Dataset):
         self.mask_prob = mask_prob
         self.mlm_target = mlm_target
         self.exclude_suffix = exclude_suffix
-        self.data_roots = [data_root1,data_root2]
         self.tokenizer = tokenizer
         # self.prior_concept_id=tokenizer.encode(self.prior_concept,add_special_tokens=False)[0]
-        self.learnable_property = learnable_property
         self.size = size
         self.center_crop = center_crop
         self.flip_p = flip_p
-        self.image_paths1 = [os.path.join(self.data_roots[0], file_path) for file_path in os.listdir(self.data_roots[0])]
-        self.image_paths2 = [os.path.join(self.data_roots[1], file_path) for file_path in os.listdir(self.data_roots[1])]
+        self.image_paths1 = [os.path.join(self.data_root1, file_path) for file_path in os.listdir(self.data_root1)]
+        self.image_paths2 = [os.path.join(self.data_root2, file_path) for file_path in os.listdir(self.data_root2)]
         self.image_paths=[self.image_paths1,self.image_paths2]
         self.num_images = len(self.image_paths1)+len(self.image_paths2)
 
@@ -162,45 +217,8 @@ class TextualInversionDatasetMulti(Dataset):
             "lanczos": PIL_INTERPOLATION["lanczos"],
         }[interpolation]
 
-        # self.templates = imagenet_style_templates_small if learnable_property == "style" else imagenet_templates_small
         # self.flip_transform = transforms.RandomHorizontalFlip(p=self.flip_p)
-        self.junctions=[
-            "displayed alongside",
-            "displayed next to",
-            "exhibited with",
-            "exhibited next to",
-            "shown next to",
-            "presented with",
-            "featured with",
-            "positioned beside",
-            "accompanied with",
-            "placed adjacent to",
-            "arranged with",
-            "paired alongside",
-            "set against",
-            "aligned with",
-            "juxtaposed with",
-            "matched with",
-            "grouped with",
-            "associated next to",
-            "framed with"
-            "with",
-            "next to",
-            "shown with",
-            "alongside",
-            "shown next to",
-            "adjacent to",
-            "together with",
-            "accompanied by",
-            "in proximity to",
-            "in collaboration with",
-            "associated with",
-            "in partnership with",
-            "in relation to",
-            "displayed with",
-            "near by"
-                        ]
-        self.junctions=list(set(self.junctions))
+        self.junctions=list(set(junctions))
     def __len__(self):
         return self._length
 
@@ -234,6 +252,7 @@ class TextualInversionDatasetMulti(Dataset):
         example = {}
         # 1. Image
         if self.get_images:
+            # multi concept image
             if np.random.rand()<0.5 and self.make_composition:
                 # sampled_concept=np.random.choice([0,1])
                 img_path1=self.image_paths[0][index % (len(self.image_paths[0]))]
@@ -280,6 +299,7 @@ class TextualInversionDatasetMulti(Dataset):
                 else:
                     text = random.choice(prefixes).format(placeholder2+' {} '.format(sampled_junction)+placeholder1)
             else:
+                # single concept image
                 sampled_concept=np.random.choice([0,1])
                 img_path=self.image_paths[sampled_concept][index % (len(self.image_paths[sampled_concept]))]
                 image = cv2.imread(img_path)
