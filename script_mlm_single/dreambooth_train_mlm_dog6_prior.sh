@@ -13,7 +13,7 @@ accelerate launch --main_process_port 4235  train_dreambooth_single_mlm.py \
   --learning_rate=1e-6 \
   --lr_scheduler="constant" \
   --lr_warmup_steps=0 \
-  --output_dir="saved_models/single/dog6" \
+  --output_dir="saved_models/dreambooth_models/single/dog6" \
   --seed=7777 \
   --mask_tokens="[MASK]" \
   --lambda_mlm=0.005 --freeze_mask_embedding=1 \
