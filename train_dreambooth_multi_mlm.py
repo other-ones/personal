@@ -744,7 +744,7 @@ def main(args):
         
         # multi
         data_root1=args.train_data_dir1,
-        data_root2=args.train_data_dir1,
+        data_root2=args.train_data_dir2,
         placeholder_tokens=placeholder_tokens,
         placeholder_ids=placeholder_ids,
         prior_concepts=prior_concepts,
@@ -773,7 +773,7 @@ def main(args):
 
         # multi
         data_root1=args.train_data_dir1,
-        data_root2=args.train_data_dir1,
+        data_root2=args.train_data_dir2,
         placeholder_tokens=placeholder_tokens,
         placeholder_ids=placeholder_ids,
         prior_concepts=prior_concepts,
@@ -1163,8 +1163,10 @@ def main(args):
                             validation_prompt_encoder_hidden_states,
                             validation_prompt_negative_prompt_embeds,
                         )
-                        validation_files=sorted(os.listdir(args.train_data_dir1))
-                        validation_target=Image.open(os.path.join((args.train_data_dir1),validation_files[0])).resize((512,512)).convert('RGB')
+                        validation_files1=sorted(os.listdir(args.train_data_dir1))
+                        validation_files2=sorted(os.listdir(args.train_data_dir2))
+                        validation_target1=Image.open(os.path.join((args.train_data_dir1),validation_files1[0])).resize((512,512)).convert('RGB')
+                        validation_target2=Image.open(os.path.join((args.train_data_dir2),validation_files2[0])).resize((512,512)).convert('RGB')
                         num_images=len(images)
                         num_cols=num_images
                         num_rows=num_images//num_cols
@@ -1172,16 +1174,17 @@ def main(args):
                         margin_right=10
                         merged_viz = Image.new('RGB', ((512+margin_right)*(num_cols+1), (512+margin_bottom)*num_rows), (255, 255, 255))
                         for ridx in range(num_rows):
-                            merged_viz.paste(validation_target,(0,ridx*(512+margin_bottom)))
+                            merged_viz.paste(validation_target1,(0,ridx*(512+margin_bottom)))
+                            merged_viz.paste(validation_target2,((512+margin_right),ridx*(512+margin_bottom))) 
                         for iidx,(image, val_prompt) in enumerate(zip(images[:],validation_prompts[:])):
                             row_idx=iidx//num_cols
                             col_idx=iidx-(num_cols*row_idx)
-                            x0=(col_idx+1)*(512+margin_right)
+                            x0=(col_idx+2)*(512+margin_right)
                             y0=row_idx*(512+margin_bottom)+512
                             x1=x0+(512+margin_right)
                             y1=y0+margin_bottom
                             merged_viz=render_caption(merged_viz,val_prompt,[x0,y0+20,x1,y1])
-                            merged_viz.paste(image.convert('RGB'),((col_idx+1)*(512+margin_right),row_idx*(512+margin_bottom)))
+                            merged_viz.paste(image.convert('RGB'),((col_idx+2)*(512+margin_right),row_idx*(512+margin_bottom)))
                         merged_viz.save(os.path.join(sample_dir, 'sample_{:05d}.jpg'.format(global_step)))
 
                         # visualize input

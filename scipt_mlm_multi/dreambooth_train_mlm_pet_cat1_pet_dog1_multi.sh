@@ -1,9 +1,11 @@
 export MODEL_NAME="runwayml/stable-diffusion-v1-5"
-export DATA_DIR="/data/twkim/diffusion/personalization/collected/images/dog6"
+export DATA_DIR="/data/twkim/diffusion/personalization/collected/images/pet_cat1"
+export DATA_DIR="/data/twkim/diffusion/personalization/collected/images/pet_dog1"
 export CUDA_VISIBLE_DEVICES=1;
 accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
   --train_data_dir1=$DATA_DIR \
+  --train_data_dir2=$DATA_DIR \
   --train_batch_size=1 \
   --gradient_accumulation_steps=1 \
   --max_train_steps=2001 \
@@ -70,4 +72,4 @@ accelerate launch --main_process_port 4234  train_dreambooth_multi_mlm.py \
   --simple_caption=1 \
   --make_composition=1 \
   --masked_loss=1 \
-  --lambda_sim=0.01
+  --lambda_sim=0.01 --sim_margin=0.2

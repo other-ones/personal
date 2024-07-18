@@ -5,6 +5,7 @@ import argparse
 def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     # ADDED
+    parser.add_argument('--sim_margin',type=float)
     parser.add_argument('--dissim_layers',type=str,default='1to12')
     parser.add_argument('--make_composition',type=int,required=False)
     parser.add_argument("--class_data_dir1",type=str,default=None,required=False,help="A folder containing the training data of class images.")
