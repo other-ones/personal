@@ -7,21 +7,21 @@ info_map={
     'pet_cat1':('cat','pet'),
     'vase':('vase','nonliving'),
     'wooden_pot':('pot','nonliving'),
-    'pet_dog1':('dog','pet'),
-    'backpack':('backpack','nonliving'),
-    'pink_sunglasses':('sunglasses','sunglasses'),
     'barn': ('barn','building'),
+    'backpack':('backpack','nonliving'),
+    'pet_dog1':('dog','pet'),
     'teddybear':('teddybear','nonliving'),
     'cat1': ('cat','pet'),
     'dog3': ('dog','pet'),
-    'chair1': ('chair','nonliving'),
-    'cat_statue': ('toy','nonliving'),
-    'rc_car':('toy','nonliving'),
+    # 'pink_sunglasses':('sunglasses','sunglasses'),
+    # 'chair1': ('chair','nonliving'),
+    # 'cat_statue': ('toy','nonliving'),
+    # 'rc_car':('toy','nonliving'),
     # 'flower1':('flower','flower'),
     
 }
 # cuda_ids=[0,1,2,3,4,5,6,7]
-lambda_mlms=[0, 
+lambda_mlms=[ 
              0.001,
             ]
 masked_loss=0
@@ -76,7 +76,7 @@ for mlm_prior in mlm_priors:
                     run_name+='_mlmprior{}'.format(mlm_prior_str)
                     run_name+='_with_ti'
 
-                    output_dir=os.path.join('dreambooth_models/single',concept)
+                    output_dir=os.path.join('saved_models/dreambooth_models/single',concept)
                     exp_path=os.path.join(output_dir,run_name)
                     if os.path.exists(exp_path):
                         print(exp_path,'exists')
