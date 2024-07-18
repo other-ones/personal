@@ -1,3 +1,4 @@
+import inspect
 from datasets_pkgs.dataset_mlm import TextualInversionDataset
 
 from contextlib import nullcontext
@@ -200,9 +201,34 @@ def log_validation(
         unet=unet,
         revision=args.revision,
         variant=args.variant,
+        feature_extractor=None,
+        safety_checker=None,
+        requires_safety_checker=False,
         torch_dtype=weight_dtype,
         **pipeline_args,
     )
+    # noise_scheduler = DDPMScheduler.from_pretrained(args.pretrained_model_name_or_path, subfolder="scheduler")
+    # accepts_keep_fp32_wrapper = "keep_fp32_wrapper" in set(
+    #     inspect.signature(
+    #         accelerator.unwrap_model
+    #     ).parameters.keys()
+    # )
+    # extra_args = (
+    #     {"keep_fp32_wrapper": True}
+    #     if accepts_keep_fp32_wrapper
+    #     else {}
+    # )
+    # unet=unet.to(accelerator.device)
+    # pipeline = StableDiffusionPipeline(
+    #         vae=accelerator.unwrap_model(vae, **extra_args),
+    #         unet=accelerator.unwrap_model(unet, **extra_args),
+    #         text_encoder=accelerator.unwrap_model(text_encoder, **extra_args),
+    #         tokenizer=accelerator.unwrap_model(tokenizer, **extra_args),
+    #         scheduler=accelerator.unwrap_model(noise_scheduler, **extra_args),
+    #         feature_extractor=None,
+    #         safety_checker=None,
+    #         requires_safety_checker=False,
+    #     )
 
     # We train on the simplified learning objective. If we were previously predicting a variance, we need the scheduler to ignore it
     scheduler_args = {}
@@ -501,6 +527,9 @@ def main(args):
                 safety_checker=None,
                 revision=args.revision,
                 variant=args.variant,
+                feature_extractor=None,
+                safety_checker=None,
+                requires_safety_checker=False,
             )
             pipeline.set_progress_bar_config(disable=True)
 
@@ -1257,6 +1286,9 @@ def main(args):
             revision=args.revision,
             variant=args.variant,
             **pipeline_args,
+            feature_extractor=None,
+        safety_checker=None,
+        requires_safety_checker=False,
         )
 
         # We train on the simplified learning objective. If we were previously predicting a variance, we need the scheduler to ignore it

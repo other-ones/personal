@@ -1069,7 +1069,7 @@ def main(args):
                     # no train then do not update token embeddings
                     # except the placeholder
                     index_no_updates = torch.ones((len(tokenizer),), dtype=torch.bool)
-                    index_no_updates[min(placeholder_token_id1) : max(placeholder_token_id1) + 1] = False #everything except placeholder
+                    index_no_updates[min(placeholder_token_id1+placeholder_token_id2) : max(placeholder_token_id1+placeholder_token_id2) + 1] = False #everything except placeholder
                     with torch.no_grad():
                         accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[
                             index_no_updates

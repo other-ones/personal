@@ -1,11 +1,11 @@
 export MODEL_NAME="runwayml/stable-diffusion-v1-5"
-export DATA_DIR="/data/twkim/diffusion/personalization/collected/images/pet_cat1"
-export DATA_DIR="/data/twkim/diffusion/personalization/collected/images/pet_dog1"
+export DATA_DIR1="/data/twkim/diffusion/personalization/collected/images/pet_cat1"
+export DATA_DIR2="/data/twkim/diffusion/personalization/collected/images/pet_dog1"
 export CUDA_VISIBLE_DEVICES=1;
 accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
-  --train_data_dir1=$DATA_DIR \
-  --train_data_dir2=$DATA_DIR \
+  --train_data_dir1=$DATA_DIR1 \
+  --train_data_dir2=$DATA_DIR2 \
   --train_batch_size=1 \
   --gradient_accumulation_steps=1 \
   --max_train_steps=2001 \
@@ -25,24 +25,26 @@ accelerate launch --main_process_port 4235  train_dreambooth_multi_mlm.py \
   --validation_steps=100 \
   --with_prior_preservation=1 \
   --placeholder_token1="<pet_cat1>" \
-  --placeholder_token2="<pet_dog1>" \
   --class_prompt1="a picture of a cat" \
   --class_data_dir1="priors/cat" \
+  --prior_concept1="cat" \
+  --placeholder_token2="<pet_dog1>" \
   --class_prompt2="a picture of a dog" \
   --class_data_dir2="priors/dog" \
-  --prior_concept1="cat" \
   --prior_concept2="dog" \
   --simple_caption=1 \
   --make_composition=1 \
   --masked_loss=1
 
 
-  export MODEL_NAME="runwayml/stable-diffusion-v1-5"
-export DATA_DIR="/data/twkim/diffusion/personalization/collected/images/dog6"
-export CUDA_VISIBLE_DEVICES=0;
-accelerate launch --main_process_port 4234  train_dreambooth_multi_mlm.py \
+export MODEL_NAME="runwayml/stable-diffusion-v1-5"
+export DATA_DIR1="/data/twkim/diffusion/personalization/collected/images/pet_cat1"
+export DATA_DIR2="/data/twkim/diffusion/personalization/collected/images/pet_dog1"
+export CUDA_VISIBLE_DEVICES=4;
+accelerate launch --main_process_port 5123  train_dreambooth_multi_mlm.py \
   --pretrained_model_name_or_path=$MODEL_NAME \
-  --train_data_dir1=$DATA_DIR \
+  --train_data_dir1=$DATA_DIR1 \
+  --train_data_dir2=$DATA_DIR2 \
   --train_batch_size=1 \
   --gradient_accumulation_steps=1 \
   --max_train_steps=2001 \
@@ -55,21 +57,20 @@ accelerate launch --main_process_port 4234  train_dreambooth_multi_mlm.py \
   --mask_embed_path='saved_models/mlm_contextnet_nonpad_lr1e4/checkpoints/mask_embeds_99000_ckpt.pt' \
   --mlm_target='masked' \
   --mlm_batch_size=20 \
-  --run_name='tmp_with_ti_multi' \
+  --run_name='pet_cat1_pet_dog1_nocompose_nomasked' \
   --prompt_type='two_pets' \
   --include_prior_concept=1 \
   --train_text_encoder \
   --validation_steps=100 \
   --with_prior_preservation=1 \
   --placeholder_token1="<pet_cat1>" \
-  --placeholder_token2="<pet_dog1>" \
   --class_prompt1="a picture of a cat" \
   --class_data_dir1="priors/cat" \
+  --prior_concept1="cat" \
+  --placeholder_token2="<pet_dog1>" \
   --class_prompt2="a picture of a dog" \
   --class_data_dir2="priors/dog" \
-  --prior_concept1="cat" \
   --prior_concept2="dog" \
   --simple_caption=1 \
-  --make_composition=1 \
-  --masked_loss=1 \
-  --lambda_sim=0.01 --sim_margin=0.2
+  --make_composition=0 \
+  --masked_loss=0 
