@@ -303,7 +303,7 @@ class CLIPAttention(nn.Module):
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len) + attention_mask
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
         # HERE
-        print(attn_weights.shape,'attn_weights.shape')
+        # torch.Size([4800, 77, 77]) attn_weights.shap
         # HERE
         attn_weights = nn.functional.softmax(attn_weights, dim=-1)
 
