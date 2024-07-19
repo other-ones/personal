@@ -75,7 +75,7 @@ for mlm_prior in mlm_priors:
                     if fixte:
                         run_name+='_fixte'
                     run_name+='_mlmprior{}'.format(mlm_prior_str)
-                    output_dir=os.path.join('dreambooth_models/single',concept)
+                    output_dir=os.path.join('saved_models/dreambooth_models/single',concept)
                     exp_path=os.path.join(output_dir,run_name)
                     if os.path.exists(exp_path):
                         print(exp_path,'exists')
