@@ -301,6 +301,8 @@ def main(args):
     # learned_embed1=learned_embed1.to(accelerator.device)
     # learned_embed2=learned_embed2.to(accelerator.device)
     placeholder_tokens=[args.placeholder_token1,args.placeholder_token2]
+    prior_word1=args.prior_concept1
+    prior_word2=args.prior_concept2
     caption_data={}
     with torch.no_grad():
         for batch_idx in range(num_batches):
@@ -318,12 +320,13 @@ def main(args):
                     cap_word=text_words[word_idx]
                     word_token_ids=tokenizer.encode(cap_word,add_special_tokens=False)
                     num_tokens=len(word_token_ids)
+                    # print(cap_word,placeholder_tokens[0],'cap_word')
                     for tok_id in word_token_ids:
-                        if cap_word in placeholder_tokens[0]:
+                        if cap_word == placeholder_tokens[0]:
                             is_keyword_tokens1.append(True)
                         else:
                             is_keyword_tokens1.append(False)
-                        if cap_word in placeholder_tokens[1]:
+                        if cap_word == placeholder_tokens[1]:
                             is_keyword_tokens2.append(True)
                         else:
                             is_keyword_tokens2.append(False)
@@ -336,17 +339,18 @@ def main(args):
                 assert len(is_keyword_tokens2)==tokenizer.model_max_length
                 is_keyword_tokens1=torch.BoolTensor(is_keyword_tokens1)
                 is_keyword_tokens2=torch.BoolTensor(is_keyword_tokens2)
+                assert torch.sum(is_keyword_tokens1)==1,'is_keyword_tokens1'
+                assert torch.sum(is_keyword_tokens2)==1,'is_keyword_tokens2'
                 is_keyword_tokens1_list.append(is_keyword_tokens1)
                 is_keyword_tokens2_list.append(is_keyword_tokens2)
             is_keyword_tokens1_list = torch.stack(is_keyword_tokens1_list)
             is_keyword_tokens2_list = torch.stack(is_keyword_tokens2_list)
-            
             images = pipeline(prompt=prompts, 
                             num_inference_steps=50, 
                             guidance_scale=7.5, width=512, height=512,
                             num_images_per_prompt=1,
                             is_keyword_tokens1=is_keyword_tokens1_list,
-                            is_keyword_tokens1=is_keyword_tokens2_list,
+                            is_keyword_tokens2=is_keyword_tokens2_list,
                             calibrate=args.calibrate
                             ).images
             

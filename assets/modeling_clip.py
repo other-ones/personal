@@ -257,7 +257,8 @@ class CLIPAttention(nn.Module):
         output_attentions: Optional[bool] = False,
         is_keyword_tokens1=None,
         is_keyword_tokens2=None,
-        scaler=1
+        scaler=10,
+        calibrate=1
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         # hidden_states: 400, 77, 768
         # is_keyword_tokens1: 400, 77
@@ -293,56 +294,52 @@ class CLIPAttention(nn.Module):
 
         src_len = key_states.size(1)
         attn_weights = torch.bmm(query_states, key_states.transpose(1, 2))
-        attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
-        # print(attn_weights.shape,'attn_weights.shape')
-        # HERE
-
-        # print(torch.sum(attn_weights),'before')
-
-        k1_scores=attn_weights[is_keyword_tokens1].view(bsz * self.num_heads, tgt_len) # 4800,77
-        k2_scores=attn_weights[is_keyword_tokens2].view(bsz * self.num_heads, tgt_len) # 4800,77
-
-        # k1
-        k1_min_scores=torch.min(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
-        k1_k2_scores=k1_scores[is_keyword_tokens2].view(bsz * self.num_heads,1)# 4800,1
-        offsets1=torch.abs(k1_k2_scores-k1_min_scores)
-
-
-        # k2
-        k2_min_scores=torch.min(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
-        k2_k1_scores=k2_scores[is_keyword_tokens1].view(bsz * self.num_heads,1) # 4800,1
-        offsets2=torch.abs(k2_k1_scores-k2_min_scores)
 
 
 
 
+        if calibrate:
+            attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
+            # HERE
 
-        # modify
-        # print(k1_scores.squeeze().abs().sum(),'k1_scores before')
-        # print(k1_k2_scores.squeeze().abs().sum(),'k1_k2_scores before')
-        k1_k2_scores=k1_k2_scores.view(bsz * self.num_heads,1)-(offsets1*scaler)
-        # print(k1_k2_scores.squeeze().abs().sum(),'k1_k2_scores after')
-        k2_k1_scores=k2_k1_scores.view(bsz * self.num_heads,1)-(offsets2*scaler)
+            print(torch.sum(attn_weights),'before')
+            k1_scores=attn_weights[is_keyword_tokens1].view(bsz * self.num_heads, tgt_len) # 4800,77
+            k2_scores=attn_weights[is_keyword_tokens2].view(bsz * self.num_heads, tgt_len) # 4800,77
+
+            # k1
+            k1_min_scores=torch.min(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
+            k1_k2_scores=k1_scores[is_keyword_tokens2].view(bsz * self.num_heads,1)# 4800,1
+            offsets1=torch.abs(k1_k2_scores-k1_min_scores)
 
 
-        k1_scores[is_keyword_tokens2]=k1_k2_scores.view(bsz * self.num_heads)
-        k2_scores[is_keyword_tokens1]=k2_k1_scores.view(bsz * self.num_heads)
+            # k2
+            k2_min_scores=torch.min(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
+            k2_k1_scores=k2_scores[is_keyword_tokens1].view(bsz * self.num_heads,1) # 4800,1
+            offsets2=torch.abs(k2_k1_scores-k2_min_scores)
 
-        k1_scores=k1_scores.view(bsz * self.num_heads, tgt_len)
-        k2_scores=k2_scores.view(bsz * self.num_heads, tgt_len)
 
-        attn_weights[is_keyword_tokens1]=k1_scores
-        attn_weights[is_keyword_tokens2]=k2_scores
 
-        attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
-        # print(k1_scores.squeeze().abs().sum(),'k1_scores after')
-        # print(torch.sum(attn_weights),'after')
-        # exit()
-        # HERE
-        # torch.Size([4800, 77, 64]) value_states.shape
-        # torch.Size([4800, 77, 64]) key_states.shape
-        # torch.Size([4800, 77, 64]) query_states.shape
-        # torch.Size([4800, 77, 77]) attn_weights.shape
+
+
+            # modify
+            k1_k2_scores=k1_k2_scores.view(bsz * self.num_heads,1)-(offsets1*scaler)
+            k2_k1_scores=k2_k1_scores.view(bsz * self.num_heads,1)-(offsets2*scaler)
+            k1_scores[is_keyword_tokens2]=k1_k2_scores.view(bsz * self.num_heads)
+            k2_scores[is_keyword_tokens1]=k2_k1_scores.view(bsz * self.num_heads)
+            k1_scores=k1_scores.view(bsz * self.num_heads, tgt_len)
+            k2_scores=k2_scores.view(bsz * self.num_heads, tgt_len)
+
+            attn_weights[is_keyword_tokens1]=k1_scores
+            attn_weights[is_keyword_tokens2]=k2_scores
+
+            attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
+            print(torch.sum(attn_weights),'after')
+            # exit()
+            # HERE
+            # torch.Size([4800, 77, 64]) value_states.shape
+            # torch.Size([4800, 77, 64]) key_states.shape
+            # torch.Size([4800, 77, 64]) query_states.shape
+            # torch.Size([4800, 77, 77]) attn_weights.shape
 
 
         if attn_weights.size() != (bsz * self.num_heads, tgt_len, src_len):
@@ -369,7 +366,7 @@ class CLIPAttention(nn.Module):
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
         
         attn_weights = nn.functional.softmax(attn_weights, dim=-1)
-        print(attn_weights.shape,'attn_weights.shape')
+        # print(attn_weights.shape,'attn_weights.shape')
 
         if output_attentions:
             # this operation is a bit akward, but it's required to
@@ -433,6 +430,7 @@ class CLIPEncoderLayer(nn.Module):
         output_attentions: Optional[bool] = False,
         is_keyword_tokens1=None,
         is_keyword_tokens2=None,
+        calibrate=None,
     ) -> Tuple[torch.FloatTensor]:
         """
         Args:
@@ -454,6 +452,7 @@ class CLIPEncoderLayer(nn.Module):
             output_attentions=output_attentions,
             is_keyword_tokens1=is_keyword_tokens1,
             is_keyword_tokens2=is_keyword_tokens2,
+            calibrate=calibrate,
         )
         hidden_states = residual + hidden_states
 
@@ -666,6 +665,7 @@ class CLIPEncoder(nn.Module):
         is_keyword_tokens2: Optional[bool] = None,
         non_keyword_idxs: Optional[bool] = None,
         output_similarities: Optional[bool] = None,
+        calibrate: Optional[bool] = None,
     ) -> Union[Tuple, BaseModelOutput]:
         r"""
         Args:
@@ -731,6 +731,7 @@ class CLIPEncoder(nn.Module):
                     output_attentions=output_attentions,
                     is_keyword_tokens1=is_keyword_tokens1,
                     is_keyword_tokens2=is_keyword_tokens2,
+                    calibrate=calibrate,
                 )
 
             hidden_states = layer_outputs[0]
@@ -808,6 +809,7 @@ class CLIPTextTransformer(nn.Module):
         inj_embeddings2=None,
         output_similarities=None,
         non_keyword_idxs=None,
+        calibrate=False
     ) -> Union[Tuple, BaseModelOutputWithPooling]:
         r"""
         Returns:
@@ -853,6 +855,7 @@ class CLIPTextTransformer(nn.Module):
             is_keyword_tokens1=is_keyword_tokens1,
             is_keyword_tokens2=is_keyword_tokens2,
             non_keyword_idxs=non_keyword_idxs,
+            calibrate=calibrate,
         )
 
         last_hidden_state = encoder_outputs[0]
@@ -938,6 +941,7 @@ class CLIPTextModel(CLIPPreTrainedModel):
         inj_embeddings2=None,
         output_similarities=False,
         non_keyword_idxs=False,
+        calibrate=False,
     ) -> Union[Tuple, BaseModelOutputWithPooling]:
         r"""
         Returns:
@@ -973,6 +977,7 @@ class CLIPTextModel(CLIPPreTrainedModel):
             inj_embeddings2=inj_embeddings2,
             output_similarities=output_similarities,
             non_keyword_idxs=non_keyword_idxs,
+            calibrate=calibrate,
         )
 
 

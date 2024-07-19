@@ -311,8 +311,8 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
         prompt_embeds: Optional[torch.FloatTensor] = None,
         negative_prompt_embeds: Optional[torch.FloatTensor] = None,
         lora_scale: Optional[float] = None,
-        is_keyword_token1= None,
-        is_keyword_token2= None,
+        is_keyword_tokens1= None,
+        is_keyword_tokens2= None,
         calibrate= False,
     ):
         r"""
@@ -389,8 +389,8 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
             prompt_embeds = self.text_encoder(
                 text_input_ids.to(device),
                 attention_mask=attention_mask,
-                is_keyword_token1=is_keyword_token1,
-                is_keyword_token2=is_keyword_token2,
+                is_keyword_tokens1=is_keyword_tokens1,
+                is_keyword_tokens2=is_keyword_tokens2,
                 calibrate=calibrate,
             )
             prompt_embeds = prompt_embeds[0]
