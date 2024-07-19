@@ -255,9 +255,13 @@ class CLIPAttention(nn.Module):
         attention_mask: Optional[torch.Tensor] = None,
         causal_attention_mask: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = False,
+        is_keyword_tokens1=None,
+        is_keyword_tokens2=None,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         """Input shape: Batch x Time x Channel"""
         # print(self.num_heads,'self.num_heads') # 12
+        if is_keyword_tokens1 is not None:
+            print(is_keyword_tokens1.shape,'is_keyword_tokens1.shape')
         bsz, tgt_len, embed_dim = hidden_states.size()
         # print(hidden_states.shape,'hidden_states.shape')
         # get query proj
@@ -363,6 +367,8 @@ class CLIPEncoderLayer(nn.Module):
         attention_mask: torch.Tensor,
         causal_attention_mask: torch.Tensor,
         output_attentions: Optional[bool] = False,
+        is_keyword_tokens1=None,
+        is_keyword_tokens2=None,
     ) -> Tuple[torch.FloatTensor]:
         """
         Args:
@@ -382,6 +388,8 @@ class CLIPEncoderLayer(nn.Module):
             attention_mask=attention_mask,
             causal_attention_mask=causal_attention_mask,
             output_attentions=output_attentions,
+            is_keyword_tokens1=is_keyword_tokens1,
+            is_keyword_tokens2=is_keyword_tokens2,
         )
         hidden_states = residual + hidden_states
 
@@ -657,6 +665,8 @@ class CLIPEncoder(nn.Module):
                     attention_mask,
                     causal_attention_mask,
                     output_attentions=output_attentions,
+                    is_keyword_tokens1=is_keyword_tokens1,
+                    is_keyword_tokens2=is_keyword_tokens2,
                 )
 
             hidden_states = layer_outputs[0]
