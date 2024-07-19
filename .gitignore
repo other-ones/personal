@@ -8,3 +8,5 @@ dreambooth_models
 logs*
 results*
 priors
+*.jpg
+*.png
