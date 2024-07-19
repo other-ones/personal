@@ -21,8 +21,9 @@ info_map={
     
 }
 # cuda_ids=[0,1,2,3,4,5,6,7]
-lambda_mlms=[0, 
-             0.001,
+lambda_mlms=[
+            # 0, 
+            0.005,
             ]
 masked_loss=0
 
@@ -121,8 +122,8 @@ for mlm_prior in mlm_priors:
                     command+='--mlm_prior={} \\\n'.format(mlm_prior)
                     command+='--run_name="{}" \\\n'.format(run_name)
                     command+='--with_prior_preservation={} \\\n'.format(pp)
-                    command+='--class_prompt="a picture of a {}" \\\n'.format(prior)
-                    command+='--class_data_dir="priors/{}" \\\n'.format(prior)
+                    command+='--class_prompt1="a picture of a {}" \\\n'.format(prior)
+                    command+='--class_data_dir1="priors/{}" \\\n'.format(prior)
                     if not fixte:
                         command+='--train_text_encoder \\\n'
                     # command+='--report_to="wandb" \\\n'

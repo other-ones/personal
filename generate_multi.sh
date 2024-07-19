@@ -12,8 +12,8 @@ accelerate launch --main_process_port 2731  generate_multi.py \
   --output_dir="results/multi/pet_cat1_pet_dog1" \
   --seed=1234 \
   --mask_tokens="[MASK]" \
-  --resume_unet_path='saved_models/dreambooth_models/multi/tmp_multi_learned_embeds_sim/checkpoints/checkpoint-2000/unet_s2000.pt' \
-  --resume_text_encoder_path='saved_models/dreambooth_models/multi/tmp_multi_learned_embeds_sim/checkpoints/checkpoint-2000/text_encoder_s2000.pt' \
+  --resume_unet_path='saved_models/dreambooth_models/multi/tmp_multi_learned_embeds/checkpoints/checkpoint-2000/unet_s2000.pt' \
+  --resume_text_encoder_path='saved_models/dreambooth_models/multi/tmp_multi_learned_embeds/checkpoints/checkpoint-2000/text_encoder_s2000.pt' \
   --prior_concept1='cat' \
   --prior_concept2='dog' \
   --include_prior_concept=1 \

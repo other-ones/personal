@@ -528,7 +528,6 @@ def main(args):
                 revision=args.revision,
                 variant=args.variant,
                 feature_extractor=None,
-                safety_checker=None,
                 requires_safety_checker=False,
             )
             pipeline.set_progress_bar_config(disable=True)

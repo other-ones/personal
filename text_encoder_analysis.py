@@ -571,39 +571,39 @@ def main():
             decoded_key2=tokenizer.batch_decode(input_ids_key2)
             decoded_key2_list=[]
 
-            print()
-            print()
-            dots='-'*100
-            print(dots)
-            print(dots)
-            print('Step\t\t|{}'.format(global_step))
-            print(dots)
-            for dec1 in decoded_key1:
-                    decoded_key1_list.append('{:8}'.format(dec1))
-            for dec2 in decoded_key2:
-                decoded_key2_list.append('{:8}'.format(dec2))
-            decoded_key1=' '.join(decoded_key1_list)
-            decoded_key2=' '.join(decoded_key2_list)
+            # print()
+            # print()
+            # dots='-'*100
+            # print(dots)
+            # print(dots)
+            # print('Step\t\t|{}'.format(global_step))
+            # print(dots)
+            # for dec1 in decoded_key1:
+            #         decoded_key1_list.append('{:8}'.format(dec1))
+            # for dec2 in decoded_key2:
+            #     decoded_key2_list.append('{:8}'.format(dec2))
+            # decoded_key1=' '.join(decoded_key1_list)
+            # decoded_key2=' '.join(decoded_key2_list)
             
             
             
             # print('Key2\t\t|{}'.format(decoded_key2))
-            for viz_idx in range(len(input_ids_pos)):
-                non_special_idxs_viz=non_special_idxs.detach().cpu()[viz_idx:viz_idx+1]
-                input_ids_pos_viz=input_ids_pos[viz_idx:viz_idx+1]
-                input_ids_pos_viz=input_ids_pos_viz[non_special_idxs_viz]
-                decoded=tokenizer.batch_decode(input_ids_pos_viz)
-                decoded_list=[]
-                for dec in decoded:
-                    decoded_list.append('{:8}'.format(dec))
-                decoded=' '.join(decoded_list)
-                print('Input\t\t|{}'.format(decoded))
-            print(dots)
-            print('Key1\t\t|{}'.format(decoded_key1))
-            print('Key2\t\t|{}'.format(decoded_key2))
-            print(dots)
-            print(dots)
-            print()
+            # for viz_idx in range(len(input_ids_pos)):
+            #     non_special_idxs_viz=non_special_idxs.detach().cpu()[viz_idx:viz_idx+1]
+            #     input_ids_pos_viz=input_ids_pos[viz_idx:viz_idx+1]
+            #     input_ids_pos_viz=input_ids_pos_viz[non_special_idxs_viz]
+            #     decoded=tokenizer.batch_decode(input_ids_pos_viz)
+            #     decoded_list=[]
+            #     for dec in decoded:
+            #         decoded_list.append('{:8}'.format(dec))
+            #     decoded=' '.join(decoded_list)
+            #     # print('Input\t\t|{}'.format(decoded))
+            # print(dots)
+            # print('Key1\t\t|{}'.format(decoded_key1))
+            # print('Key2\t\t|{}'.format(decoded_key2))
+            # print(dots)
+            # print(dots)
+            # print()
             # 1. MLM Result Logging
 
 
@@ -624,27 +624,55 @@ def main():
             
             if accelerator.is_main_process:
                 count=1
-                for iip in input_ids_pos:
-                    print(torch.sum(iip).sum(),'iip')
+                # for iip in input_ids_pos:
+                #     print(torch.sum(iip).sum(),'iip')
                 out = text_encoder(input_ids_pos,
                                     is_keyword_tokens1=is_keyword_tokens1,
                                     inj_embeddings1=target_emb1,
                                     is_keyword_tokens2=is_keyword_tokens2,
                                     inj_embeddings2=target_emb2,
                                     output_similarities=True,
+                                    output_attentions=True,
                                     non_keyword_idxs=non_keyword_idxs,
                                     )
+                # is_keyword_tokens1 # 400,77
+                attention_per_layers=out.attentions #[12,12,400,77,77]
+                print(len(attention_per_layers),'len(attention_per_layers)') #12
+                print(is_keyword_tokens1.shape,'is_keyword_tokens1.shape') #400,77
+                for layer_idx in range(len(attention_per_layers)):
+                    layer_attentions=attention_per_layers[layer_idx]
+                    # print(layer_idx,layer_attentions.shape,'layer_attentions.shape') # torch.Size([400, num_head, 77, 77])
+                    layer_attentions=torch.mean(layer_attentions,dim=1) # 400,77,77
+                    key1_attentions=layer_attentions[is_keyword_tokens1] # 400,77
+                    max_idx=torch.argmax(key1_attentions[:,1:],1)+1 # 400,
+                    key1_idx=torch.argmax(is_keyword_tokens1.int(),1) # 400,
+                    key2_idx=torch.argmax(is_keyword_tokens2.int(),1) # 400,
+                    key1_key1_attentions=key1_attentions[is_keyword_tokens1] # 400
+                    key1_key2_attentions=key1_attentions[is_keyword_tokens2] # 400
+                    diff=torch.abs(key1_key1_attentions-key1_key2_attentions) # 400
+                    diff_sum=diff.sum().item()
+                    diff_ratio=diff/key1_key1_attentions
+                    # print(max_idx,'max_idx')
+                    # print(key1_idx,'key1_idx')
+                    # print(key2_idx,'key2_idx')
+                    # print(torch.sum(max_idx==key1_idx)/len(key2_idx),'proportion1')
+                    # print(torch.sum(key1_key1_attentions).item(),'sumk1k1')
+                    print(layer_idx,diff_ratio.mean(),'diff_ratio',torch.sum(max_idx==key2_idx).item()/len(key2_idx),'proportion2')
+                    # print(layer_idx,torch.sum(max_idx==key2_idx).item())
+                    # print(indexed.shape,'indexed.shape',torch.argmax(indexed[:,1:],1)+1)
+                    
                 keywords_similarities=out.keywords_similarities
                 nonkey_similarities=out.nonkey_similarities
                 nonkey_similarities=nonkey_similarities.detach().cpu().numpy()
                 keywords_similarities=keywords_similarities.detach().cpu().numpy()
+                # torch.Size([400, 77]) is_keyword_tokens1.shape
+                # torch.Size([400, 12, 77, 77]) attention
                 print(keywords_similarities.shape,'keywords_similarities.shape')
                 print(nonkey_similarities.shape,'nonkey_similarities.shape')
                 xpoints=np.arange(13)
                 for key_sims,nonkey_sims in zip(keywords_similarities,nonkey_similarities):
                     plt.plot(xpoints,key_sims, 'b',linewidth=0.1)
                     plt.plot(xpoints,nonkey_sims, 'r',linewidth=0.1)
-                    print(key_sims[-1],nonkey_sims[-1])
                     count+=1
                 plt.savefig('simcurve.jpg',dpi=500)
                 break
