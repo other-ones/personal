@@ -567,9 +567,6 @@ class StableDiffusionPipeline(DiffusionPipeline, TextualInversionLoaderMixin, Lo
     def __call__(
         self,
         prompt: Union[str, List[str]] = None,
-        spatial_render = None,
-        masks_tensor = None,
-        blank_idxs = None,
         height: Optional[int] = None,
         width: Optional[int] = None,
         num_inference_steps: int = 50,

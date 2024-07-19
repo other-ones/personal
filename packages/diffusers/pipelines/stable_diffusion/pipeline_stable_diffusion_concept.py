@@ -311,8 +311,9 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
         prompt_embeds: Optional[torch.FloatTensor] = None,
         negative_prompt_embeds: Optional[torch.FloatTensor] = None,
         lora_scale: Optional[float] = None,
-        inj_embeddings= None,
-        is_keyword_tokens= None,
+        is_keyword_token1= None,
+        is_keyword_token2= None,
+        calibrate= False,
     ):
         r"""
         Encodes the prompt into text encoder hidden states.
@@ -388,8 +389,9 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
             prompt_embeds = self.text_encoder(
                 text_input_ids.to(device),
                 attention_mask=attention_mask,
-                inj_embeddings=inj_embeddings,
-                is_keyword_tokens=is_keyword_tokens,
+                is_keyword_token1=is_keyword_token1,
+                is_keyword_token2=is_keyword_token2,
+                calibrate=calibrate,
             )
             prompt_embeds = prompt_embeds[0]
 
@@ -592,8 +594,9 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
         cross_attention_kwargs: Optional[Dict[str, Any]] = None,
         guidance_rescale: float = 0.0,
         verbose=True,
-        inj_embeddings=None,
-        is_keyword_tokens=None,
+        is_keyword_tokens1=None,
+        is_keyword_tokens2=None,
+        calibrate=False,
     ):
         r"""
         Function invoked when calling the pipeline for generation.
@@ -707,8 +710,10 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
             prompt_embeds=prompt_embeds,
             negative_prompt_embeds=negative_prompt_embeds,
             lora_scale=text_encoder_lora_scale,
-            inj_embeddings=inj_embeddings,
-            is_keyword_tokens=is_keyword_tokens,
+            # inj_embeddings1=inj_embeddings1,
+            is_keyword_tokens1=is_keyword_tokens1,
+            is_keyword_tokens2=is_keyword_tokens2,
+            calibrate=calibrate,
         )
         # pdb.set_trace() 
         # 4. Prepare timesteps

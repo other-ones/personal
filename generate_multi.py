@@ -34,7 +34,7 @@ from diffusers import (
     AutoencoderKL,
     DDPMScheduler,
     UNet2DConditionModel,
-    StableDiffusionPipeline,
+    StableDiffusionPipelineConcept,
     UNet2DModel
 )
 
@@ -254,7 +254,7 @@ def main(args):
     )
     
     unet=unet.to(accelerator.device)
-    pipeline = StableDiffusionPipeline(
+    pipeline = StableDiffusionPipelineConcept(
             vae=accelerator.unwrap_model(vae, **extra_args),
             unet=accelerator.unwrap_model(unet, **extra_args),
             text_encoder=accelerator.unwrap_model(text_encoder, **extra_args),
@@ -300,6 +300,7 @@ def main(args):
     validation_target2=Image.open(os.path.join((args.train_data_dir2),validation_files2[0])).resize((512,512)).convert('RGB')
     # learned_embed1=learned_embed1.to(accelerator.device)
     # learned_embed2=learned_embed2.to(accelerator.device)
+    placeholder_tokens=[args.placeholder_token1,args.placeholder_token2]
     caption_data={}
     with torch.no_grad():
         for batch_idx in range(num_batches):
@@ -307,10 +308,46 @@ def main(args):
             if not len(prompts):
                 break
             print(sample_dir,'sample_dir')
+            is_keyword_tokens1_list=[]
+            is_keyword_tokens2_list=[]
+            for prompt in prompts:
+                is_keyword_tokens1=[False]
+                is_keyword_tokens2=[False]
+                text_words=prompt.split()
+                for word_idx in range(len(text_words)):
+                    cap_word=text_words[word_idx]
+                    word_token_ids=tokenizer.encode(cap_word,add_special_tokens=False)
+                    num_tokens=len(word_token_ids)
+                    for tok_id in word_token_ids:
+                        if cap_word in placeholder_tokens[0]:
+                            is_keyword_tokens1.append(True)
+                        else:
+                            is_keyword_tokens1.append(False)
+                        if cap_word in placeholder_tokens[1]:
+                            is_keyword_tokens2.append(True)
+                        else:
+                            is_keyword_tokens2.append(False)
+                # 3) is_keyword_tokens - keyword indices for MLM
+                for _ in range(len(is_keyword_tokens1),tokenizer.model_max_length):
+                    is_keyword_tokens1.append(False)
+                for _ in range(len(is_keyword_tokens2),tokenizer.model_max_length):
+                    is_keyword_tokens2.append(False)
+                assert len(is_keyword_tokens1)==tokenizer.model_max_length
+                assert len(is_keyword_tokens2)==tokenizer.model_max_length
+                is_keyword_tokens1=torch.BoolTensor(is_keyword_tokens1)
+                is_keyword_tokens2=torch.BoolTensor(is_keyword_tokens2)
+                is_keyword_tokens1_list.append(is_keyword_tokens1)
+                is_keyword_tokens2_list.append(is_keyword_tokens2)
+            is_keyword_tokens1_list = torch.stack(is_keyword_tokens1_list)
+            is_keyword_tokens2_list = torch.stack(is_keyword_tokens2_list)
+            
             images = pipeline(prompt=prompts, 
                             num_inference_steps=50, 
                             guidance_scale=7.5, width=512, height=512,
                             num_images_per_prompt=1,
+                            is_keyword_tokens1=is_keyword_tokens1_list,
+                            is_keyword_tokens1=is_keyword_tokens2_list,
+                            calibrate=args.calibrate
                             ).images
             
             # 
