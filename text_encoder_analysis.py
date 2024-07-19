@@ -529,6 +529,7 @@ def main():
                 plt.plot(xpoints,nonkey_sims, 'r',linewidth=0.1)
                 count+=1
             plt.savefig('simcurve.jpg',dpi=500)
+            break
     # Create the pipeline using the trained modules and save it.
     accelerator.wait_for_everyone()
     accelerator.end_training()

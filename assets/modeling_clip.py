@@ -262,6 +262,7 @@ class CLIPAttention(nn.Module):
         # print(self.num_heads,'self.num_heads') # 12
         if is_keyword_tokens1 is not None:
             print(is_keyword_tokens1.shape,'is_keyword_tokens1.shape')
+            print(is_keyword_tokens2.shape,'is_keyword_tokens2.shape')
         bsz, tgt_len, embed_dim = hidden_states.size()
         # print(hidden_states.shape,'hidden_states.shape')
         # get query proj
@@ -301,10 +302,10 @@ class CLIPAttention(nn.Module):
                 )
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len) + attention_mask
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
-        # print(attn_weights.shape,'attn_weights.shape')
-        # torch.Size([4800, 77, 77]) attn_weights.shape1
+        # HERE
+        print(attn_weights.shape,'attn_weights.shape')
+        # HERE
         attn_weights = nn.functional.softmax(attn_weights, dim=-1)
-        # torch.Size([4800, 77, 77]) attn_weights.shape2
 
 
         if output_attentions:
@@ -317,9 +318,9 @@ class CLIPAttention(nn.Module):
         else:
             attn_weights_reshaped = None
 
+
+        
         attn_probs = nn.functional.dropout(attn_weights, p=self.dropout, training=self.training)
-        # print(attn_probs.shape,'attn_probs.shape')
-        # print(value_states.shape,'value_states.shape')
         attn_output = torch.bmm(attn_probs, value_states)
 
         if attn_output.size() != (bsz * self.num_heads, tgt_len, self.head_dim):
