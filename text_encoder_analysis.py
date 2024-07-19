@@ -1,5 +1,7 @@
 from collections import OrderedDict
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 from configs import parse_args
 import sys
 sys.path.insert(0, './packages')
@@ -266,12 +268,6 @@ def main():
     
     
     
-    # # mask_embeds=token_embeds[mask_token_ids]
-    # if args.mask_embed_path is not None:
-    #     mask_embeds=torch.load(args.mask_embed_path)[args.mask_tokens].to(accelerator.device)
-    #     mask_embeds=F.normalize(mask_embeds,p=1,dim=-1)*args.avg_norm
-    # # Add the placeholder token in tokenizer
-
 
     if args.resume_unet_path and args.resume_unet_path!='None':
         state_dict = torch.load(args.resume_unet_path, map_location=torch.device('cpu'))
@@ -316,19 +312,7 @@ def main():
         args.learning_rate = (
             args.learning_rate * args.gradient_accumulation_steps * args.train_batch_size * accelerator.num_processes
         )
-    # params_to_optimize = [
-    #     {"params": text_encoder.get_input_embeddings().parameters(), "lr": args.learning_rate},
-    #     # {"params": learned_embeds, "lr": args.learning_rate},
-    #     # {"params": cls_net.parameters(), "lr": args.learning_rate},
-    # ]
-    # Initialize the optimizer
-    # optimizer = torch.optim.AdamW(
-    #     params_to_optimize,  # only optimize the embeddings
-    #     lr=args.learning_rate,
-    #     betas=(args.adam_beta1, args.adam_beta2),
-    #     weight_decay=args.adam_weight_decay,
-    #     eps=args.adam_epsilon,
-    # )
+    
 
     # Dataset and DataLoaders creation:
     prior_concepts=[args.prior_concept1,args.prior_concept2]
@@ -358,30 +342,7 @@ def main():
    
     
     def collate_fn(examples):
-        # if 'pixel_values' in examples[0]:
-        #     # 1. pixel_values
-        #     pixel_values = [example["pixel_values"] for example in examples]
-        #     pixel_values = torch.stack(pixel_values)
-        #     pixel_values = pixel_values.to(memory_format=torch.contiguous_format).float()
-
-        #     # 2. input_ids
-        #     input_ids = [example["input_ids"] for example in examples]
-        #     input_ids=torch.stack(input_ids)
-        #     # 2. input_ids
-        #     is_keyword_tokens1 = [example["is_keyword_tokens1"] for example in examples] #N,77, list of booleans
-        #     is_keyword_tokens2 = [example["is_keyword_tokens2"] for example in examples] #N,77, list of booleans
-        #     is_keyword_tokens1 = torch.stack(is_keyword_tokens1)
-        #     is_keyword_tokens2 = torch.stack(is_keyword_tokens2)
-
-        #     masks = [example["masks"] for example in examples]
-        #     masks = torch.stack(masks)
-        #     masks = masks.to(memory_format=torch.contiguous_format).float()
-        # else:
-        #     pixel_values=[]
-        #     input_ids=[]
-        #     is_keyword_tokens1=[]
-        #     is_keyword_tokens2=[]
-        #     masks=[]
+        
 
        
         # 3. For MLM 
@@ -407,13 +368,6 @@ def main():
 
 
         batch = {
-            # "pixel_values": pixel_values,
-            # "input_ids": input_ids, # for reconstruction
-            # "is_keyword_tokens2": is_keyword_tokens2,
-            # "is_keyword_tokens1": is_keyword_tokens1,
-            # "masks": masks,
-
-
             "raw_captions": raw_captions,
             "input_ids_pos": input_ids_pos, # for mlm
             "non_special_idxs": non_special_idxs,
@@ -422,20 +376,12 @@ def main():
             "is_keyword_tokens2": is_keyword_tokens2,# for triplet
         }
         return batch
-    # train_dataloader_img = torch.utils.data.DataLoader(
-    #     train_dataset_img, batch_size=args.train_batch_size, shuffle=True, num_workers=args.dataloader_num_workers,
-    #     collate_fn=collate_fn,
-    # )
     train_dataloader_mlm_multi = torch.utils.data.DataLoader(
         train_dataset_mlm_multi, batch_size=args.mlm_batch_size, shuffle=True, num_workers=args.dataloader_num_workers,
         collate_fn=collate_fn,
     )
     
 
-    # mlm_loader_multi = cycle(train_dataloader_mlm_multi)
-    # def load_mlm_batch(mlm_loader):
-    #     mlm_data_multi=next(mlm_loader)
-    #     return mlm_data_multi
 
 
     
@@ -447,42 +393,13 @@ def main():
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
         overrode_max_train_steps = True
 
-    # lr_scheduler = get_scheduler(
-    #     args.lr_scheduler,
-    #     optimizer=optimizer,
-    #     num_warmup_steps=args.lr_warmup_steps * accelerator.num_processes,
-    #     num_training_steps=args.max_train_steps * accelerator.num_processes,
-    #     num_cycles=args.lr_num_cycles,
-    # )
 
     text_encoder.train()
-    # Prepare everything with our `accelerator`.
-    
     text_encoder, train_dataloader_mlm_multi = accelerator.prepare(
         text_encoder, train_dataloader_mlm_multi
     )
     
 
-    # if args.cls_net_path is not None:
-    #     for defined_key in cls_net.state_dict():
-    #         print(defined_key,'defined_key-clsnet')
-    #     saved_state_dict = torch.load(args.cls_net_path, map_location=torch.device('cpu'))
-    #     print()
-
-    #     new_state_dict={}
-    #     for saved_key in saved_state_dict:
-    #         new_key=saved_key
-    #         print(saved_key,'saved_key-clsnet')
-    #         if accelerator.num_processes>1:
-    #             if not saved_key.startswith('module.'):
-    #                 new_key='module.'+saved_key
-    #         else:
-    #             if saved_key.startswith('module.'):
-    #                 new_key=saved_key.replace('module.','')
-    #         new_state_dict[new_key]=saved_state_dict[saved_key]
-    #     cls_net.load_state_dict(new_state_dict,strict=True)
-    # For mixed precision training we cast all non-trainable weigths (vae, non-lora text_encoder and non-lora unet) to half-precision
-    # as these weights are only used for inference, keeping weights in full precision is not required.
     weight_dtype = torch.float32
     if accelerator.mixed_precision == "fp16":
         weight_dtype = torch.float16
@@ -515,8 +432,6 @@ def main():
     logger.info(f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
     logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {args.max_train_steps}")
-    global_step = 0
-    first_epoch = 0
     # Potentially load in the weights and states from a previous save
 
     progress_bar = tqdm(
@@ -542,99 +457,78 @@ def main():
     pipeline = pipeline.to(accelerator.device)
     pipeline.set_progress_bar_config(disable=False)
 
-    # orig_embeds_params = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight.data.clone()
-    # cos_sim=torch.nn.CosineSimilarity(dim=-1, eps=1e-08)
-    # from supconloss import SupervisedContrastiveLoss
-    # contrastive_criterion=SupervisedContrastiveLoss()
     import time
     text_encoder.train()
     for step, batch_text_multi in enumerate(train_dataloader_mlm_multi):
-        with accelerator.accumulate(text_encoder):
-            # for multi MLM
-            input_ids_pos=batch_text_multi["input_ids_pos"]# B,77 list of booleans (tensor)
-            raw_captions=batch_text_multi["raw_captions"]
-            non_special_idxs=batch_text_multi["non_special_idxs"]
-            non_keyword_idxs=batch_text_multi["non_keyword_idxs"]
-            is_keyword_tokens1=batch_text_multi["is_keyword_tokens1"].to(accelerator.device)
-            is_keyword_tokens2=batch_text_multi["is_keyword_tokens2"].to(accelerator.device)
-            # for multi MLM
-
-            input_ids_key1=input_ids_pos[is_keyword_tokens1]
-            input_ids_key2=input_ids_pos[is_keyword_tokens2]
-            decoded_key1=tokenizer.batch_decode(input_ids_key1)
-            decoded_key1_list=[]
-            decoded_key2=tokenizer.batch_decode(input_ids_key2)
-            decoded_key2_list=[]
+        # for multi MLM
+        input_ids_pos=batch_text_multi["input_ids_pos"]# B,77 list of booleans (tensor)
+        raw_captions=batch_text_multi["raw_captions"]
+        non_special_idxs=batch_text_multi["non_special_idxs"]
+        non_keyword_idxs=batch_text_multi["non_keyword_idxs"]
+        is_keyword_tokens1=batch_text_multi["is_keyword_tokens1"].to(accelerator.device)
+        is_keyword_tokens2=batch_text_multi["is_keyword_tokens2"].to(accelerator.device)
+        # for multi MLM
+        input_ids_key1=input_ids_pos[is_keyword_tokens1]
+        input_ids_key2=input_ids_pos[is_keyword_tokens2]
+        decoded_key1=tokenizer.batch_decode(input_ids_key1)
+        decoded_key1_list=[]
+        decoded_key2=tokenizer.batch_decode(input_ids_key2)
+        decoded_key2_list=[]
 
 
 
 
-            # Target Encodings
-            learned_embed1=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_id1) : max(placeholder_token_id1) + 1]
-            learned_embed2=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_id2) : max(placeholder_token_id2) + 1]
-            if args.normalize_target1:
-                target_emb1=F.normalize(learned_embed1,p=1,dim=-1)*args.normalize_target1
-            else:
-                target_emb1=learned_embed1
-            if args.normalize_target2:
-                target_emb2=F.normalize(learned_embed2,p=1,dim=-1)*args.normalize_target2
-            else:
-                target_emb2=learned_embed2
-            if accelerator.is_main_process:
-                count=1
-                # for iip in input_ids_pos:
-                #     print(torch.sum(iip).sum(),'iip')
-                out = text_encoder(input_ids_pos,
-                                    is_keyword_tokens1=is_keyword_tokens1,
-                                    inj_embeddings1=target_emb1,
-                                    is_keyword_tokens2=is_keyword_tokens2,
-                                    inj_embeddings2=target_emb2,
-                                    output_similarities=True,
-                                    output_attentions=True,
-                                    non_keyword_idxs=non_keyword_idxs,
-                                    )
-                # is_keyword_tokens1 # 400,77
-                attention_per_layers=out.attentions #[12,12,400,77,77]
-                print(len(attention_per_layers),'len(attention_per_layers)') #12
-                print(is_keyword_tokens1.shape,'is_keyword_tokens1.shape') #400,77
-                for layer_idx in range(len(attention_per_layers)):
-                    layer_attentions=attention_per_layers[layer_idx]
-                    # print(layer_idx,layer_attentions.shape,'layer_attentions.shape') # torch.Size([400, num_head, 77, 77])
-                    layer_attentions=torch.mean(layer_attentions,dim=1) # 400,77,77
-                    key1_attentions=layer_attentions[is_keyword_tokens1] # 400,77
-                    max_idx=torch.argmax(key1_attentions[:,1:],1)+1 # 400,
-                    key1_idx=torch.argmax(is_keyword_tokens1.int(),1) # 400,
-                    key2_idx=torch.argmax(is_keyword_tokens2.int(),1) # 400,
-                    key1_key1_attentions=key1_attentions[is_keyword_tokens1] # 400
-                    key1_key2_attentions=key1_attentions[is_keyword_tokens2] # 400
-                    diff=torch.abs(key1_key1_attentions-key1_key2_attentions) # 400
-                    diff_sum=diff.sum().item()
-                    diff_ratio=diff/key1_key1_attentions
-                    # print(max_idx,'max_idx')
-                    # print(key1_idx,'key1_idx')
-                    # print(key2_idx,'key2_idx')
-                    # print(torch.sum(max_idx==key1_idx)/len(key2_idx),'proportion1')
-                    # print(torch.sum(key1_key1_attentions).item(),'sumk1k1')
-                    print(layer_idx,diff_ratio.mean(),'diff_ratio',torch.sum(max_idx==key2_idx).item()/len(key2_idx),'proportion2')
-                    # print(layer_idx,torch.sum(max_idx==key2_idx).item())
-                    # print(indexed.shape,'indexed.shape',torch.argmax(indexed[:,1:],1)+1)
-                    
-                keywords_similarities=out.keywords_similarities
-                nonkey_similarities=out.nonkey_similarities
-                nonkey_similarities=nonkey_similarities.detach().cpu().numpy()
-                keywords_similarities=keywords_similarities.detach().cpu().numpy()
-                # torch.Size([400, 77]) is_keyword_tokens1.shape
-                # torch.Size([400, 12, 77, 77]) attention
-                print(keywords_similarities.shape,'keywords_similarities.shape')
-                print(nonkey_similarities.shape,'nonkey_similarities.shape')
-                xpoints=np.arange(13)
-                for key_sims,nonkey_sims in zip(keywords_similarities,nonkey_similarities):
-                    plt.plot(xpoints,key_sims, 'b',linewidth=0.1)
-                    plt.plot(xpoints,nonkey_sims, 'r',linewidth=0.1)
-                    count+=1
-                plt.savefig('simcurve.jpg',dpi=500)
-                break
-            break
+        # Target Encodings
+        learned_embed1=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_id1) : max(placeholder_token_id1) + 1]
+        learned_embed2=accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[min(placeholder_token_id2) : max(placeholder_token_id2) + 1]
+        if args.normalize_target1:
+            target_emb1=F.normalize(learned_embed1,p=1,dim=-1)*args.normalize_target1
+        else:
+            target_emb1=learned_embed1
+        if args.normalize_target2:
+            target_emb2=F.normalize(learned_embed2,p=1,dim=-1)*args.normalize_target2
+        else:
+            target_emb2=learned_embed2
+        if accelerator.is_main_process:
+            count=1
+            out = text_encoder(input_ids_pos,
+                                is_keyword_tokens1=is_keyword_tokens1,
+                                inj_embeddings1=target_emb1,
+                                is_keyword_tokens2=is_keyword_tokens2,
+                                inj_embeddings2=target_emb2,
+                                output_similarities=True,
+                                output_attentions=True,
+                                non_keyword_idxs=non_keyword_idxs,
+                                )
+            # is_keyword_tokens1 # 400,77
+            attention_per_layers=out.attentions #[12,12,400,77,77]
+            print(len(attention_per_layers),'len(attention_per_layers)') #12
+            print(is_keyword_tokens1.shape,'is_keyword_tokens1.shape') #400,77
+            for layer_idx in range(len(attention_per_layers)):
+                layer_attentions=attention_per_layers[layer_idx]
+                # print(layer_idx,layer_attentions.shape,'layer_attentions.shape') # torch.Size([400, num_head, 77, 77])
+                layer_attentions=torch.mean(layer_attentions,dim=1) # 400,77,77
+                key1_attentions=layer_attentions[is_keyword_tokens1] # 400,77
+                max_idx=torch.argmax(key1_attentions[:,1:],1)+1 # 400,
+                key1_idx=torch.argmax(is_keyword_tokens1.int(),1) # 400,
+                key2_idx=torch.argmax(is_keyword_tokens2.int(),1) # 400,
+                key1_key1_attentions=key1_attentions[is_keyword_tokens1] # 400
+                key1_key2_attentions=key1_attentions[is_keyword_tokens2] # 400
+                diff=torch.abs(key1_key1_attentions-key1_key2_attentions) # 400
+                diff_sum=diff.sum().item()
+                diff_ratio=diff/key1_key1_attentions
+                print(layer_idx,diff_ratio.mean(),'diff_ratio',torch.sum(max_idx==key2_idx).item()/len(key2_idx),'proportion2')
+                
+            keywords_similarities=out.keywords_similarities
+            nonkey_similarities=out.nonkey_similarities
+            nonkey_similarities=nonkey_similarities.detach().cpu().numpy()
+            keywords_similarities=keywords_similarities.detach().cpu().numpy()
+            xpoints=np.arange(13)
+            for key_sims,nonkey_sims in zip(keywords_similarities,nonkey_similarities):
+                plt.plot(xpoints,key_sims, 'b',linewidth=0.1)
+                plt.plot(xpoints,nonkey_sims, 'r',linewidth=0.1)
+                count+=1
+            plt.savefig('simcurve.jpg',dpi=500)
     # Create the pipeline using the trained modules and save it.
     accelerator.wait_for_everyone()
     accelerator.end_training()
