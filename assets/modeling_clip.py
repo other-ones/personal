@@ -257,33 +257,97 @@ class CLIPAttention(nn.Module):
         output_attentions: Optional[bool] = False,
         is_keyword_tokens1=None,
         is_keyword_tokens2=None,
+        scaler=1
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
+        # hidden_states: 400, 77, 768
+        # is_keyword_tokens1: 400, 77
+        # is_keyword_tokens2: 400, 77
+
         """Input shape: Batch x Time x Channel"""
-        # print(self.num_heads,'self.num_heads') # 12
-        if is_keyword_tokens1 is not None:
-            print(is_keyword_tokens1.shape,'is_keyword_tokens1.shape')
-            print(is_keyword_tokens2.shape,'is_keyword_tokens2.shape')
         bsz, tgt_len, embed_dim = hidden_states.size()
-        # print(hidden_states.shape,'hidden_states.shape')
+
+        if is_keyword_tokens1 is not None and is_keyword_tokens2 is not None:
+            # is_keyword_tokens1=is_keyword_tokens1.unsqueeze(-1).repeat(1,1,self.num_heads) # 400,77,1-> 400,77,12
+            # is_keyword_tokens2=is_keyword_tokens2.unsqueeze(-1).repeat(1,1,self.num_heads) # 400,77,1-> 400,77,12
+            is_keyword_tokens1=is_keyword_tokens1.unsqueeze(1).repeat(1,self.num_heads,1) # 400,77,1-> 400,77,12
+            is_keyword_tokens2=is_keyword_tokens2.unsqueeze(1).repeat(1,self.num_heads,1) # 400,77,1-> 400,77,12
+            is_keyword_tokens1=is_keyword_tokens1.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
+            is_keyword_tokens2=is_keyword_tokens2.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
+
         # get query proj
-        query_states = self.q_proj(hidden_states) * self.scale
-        key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
-        value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
-        # print(query_states.shape,'query_states.shape1') # 400,77,768
         proj_shape = (bsz * self.num_heads, -1, self.head_dim)
+        query_states = self.q_proj(hidden_states) * self.scale
+        # print(query_states.shape,'query_states1') # 400,77,768
         query_states = self._shape(query_states, tgt_len, bsz).view(*proj_shape)
+        # print(query_states.shape,'query_states2') # 4800,77,768
+
+
+
+
+
+        key_states = self._shape(self.k_proj(hidden_states), -1, bsz)
         key_states = key_states.view(*proj_shape)
+
+        value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
         value_states = value_states.view(*proj_shape)
-        # print(query_states.shape,'query_states.shape2') # 400,77,12,64
 
         src_len = key_states.size(1)
         attn_weights = torch.bmm(query_states, key_states.transpose(1, 2))
+        attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
+        # print(attn_weights.shape,'attn_weights.shape')
+        # HERE
+
+        # print(torch.sum(attn_weights),'before')
+
+        k1_scores=attn_weights[is_keyword_tokens1].view(bsz * self.num_heads, tgt_len) # 4800,77
+        k2_scores=attn_weights[is_keyword_tokens2].view(bsz * self.num_heads, tgt_len) # 4800,77
+
+        # k1
+        k1_min_scores=torch.min(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
+        k1_k2_scores=k1_scores[is_keyword_tokens2].view(bsz * self.num_heads,1)# 4800,1
+        offsets1=torch.abs(k1_k2_scores-k1_min_scores)
+
+
+        # k2
+        k2_min_scores=torch.min(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
+        k2_k1_scores=k2_scores[is_keyword_tokens1].view(bsz * self.num_heads,1) # 4800,1
+        offsets2=torch.abs(k2_k1_scores-k2_min_scores)
+
+
+
+
+
+        # modify
+        # print(k1_scores.squeeze().abs().sum(),'k1_scores before')
+        # print(k1_k2_scores.squeeze().abs().sum(),'k1_k2_scores before')
+        k1_k2_scores=k1_k2_scores.view(bsz * self.num_heads,1)-(offsets1*scaler)
+        # print(k1_k2_scores.squeeze().abs().sum(),'k1_k2_scores after')
+        k2_k1_scores=k2_k1_scores.view(bsz * self.num_heads,1)-(offsets2*scaler)
+
+
+        k1_scores[is_keyword_tokens2]=k1_k2_scores.view(bsz * self.num_heads)
+        k2_scores[is_keyword_tokens1]=k2_k1_scores.view(bsz * self.num_heads)
+
+        k1_scores=k1_scores.view(bsz * self.num_heads, tgt_len)
+        k2_scores=k2_scores.view(bsz * self.num_heads, tgt_len)
+
+        attn_weights[is_keyword_tokens1]=k1_scores
+        attn_weights[is_keyword_tokens2]=k2_scores
+
+        attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
+        # print(k1_scores.squeeze().abs().sum(),'k1_scores after')
+        # print(torch.sum(attn_weights),'after')
+        # exit()
+        # HERE
+        # torch.Size([4800, 77, 64]) value_states.shape
+        # torch.Size([4800, 77, 64]) key_states.shape
+        # torch.Size([4800, 77, 64]) query_states.shape
+        # torch.Size([4800, 77, 77]) attn_weights.shape
+
 
         if attn_weights.size() != (bsz * self.num_heads, tgt_len, src_len):
-            raise ValueError(
-                f"Attention weights should be of size {(bsz * self.num_heads, tgt_len, src_len)}, but is"
-                f" {attn_weights.size()}"
-            )
+            raise ValueError(f"Attention weights should be of size {(bsz * self.num_heads, tgt_len, src_len)}, but is"
+                f" {attn_weights.size()}")
 
         # apply the causal_attention_mask first
         if causal_attention_mask is not None:
@@ -296,17 +360,16 @@ class CLIPAttention(nn.Module):
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
 
         if attention_mask is not None:
+            # print('HERE')
             if attention_mask.size() != (bsz, 1, tgt_len, src_len):
                 raise ValueError(
                     f"Attention mask should be of size {(bsz, 1, tgt_len, src_len)}, but is {attention_mask.size()}"
                 )
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len) + attention_mask
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
-        # HERE
-        # torch.Size([4800, 77, 77]) attn_weights.shap
-        # HERE
+        
         attn_weights = nn.functional.softmax(attn_weights, dim=-1)
-
+        print(attn_weights.shape,'attn_weights.shape')
 
         if output_attentions:
             # this operation is a bit akward, but it's required to

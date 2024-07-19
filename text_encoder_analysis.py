@@ -518,6 +518,7 @@ def main():
                 diff_sum=diff.sum().item()
                 diff_ratio=diff/key1_key1_attentions
                 print(layer_idx,diff_ratio.mean(),'diff_ratio',torch.sum(max_idx==key2_idx).item()/len(key2_idx),'proportion2')
+                # print(layer_idx,diff_sum,'diff_sum',torch.sum(max_idx==key2_idx).item()/len(key2_idx),'proportion2')
                 
             keywords_similarities=out.keywords_similarities
             nonkey_similarities=out.nonkey_similarities
