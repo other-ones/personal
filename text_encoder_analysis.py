@@ -558,12 +558,7 @@ def main():
             is_keyword_tokens1=batch_text_multi["is_keyword_tokens1"].to(accelerator.device)
             is_keyword_tokens2=batch_text_multi["is_keyword_tokens2"].to(accelerator.device)
             # for multi MLM
-            
 
-            # 1. MLM Result Logging
-            # print(input_ids_pos.shape,'input_ids_pos.shape')
-            # print(is_keyword_tokens1.shape,'is_keyword_tokens1.shape')
-            # print(is_keyword_tokens2.shape,'is_keyword_tokens2.shape')
             input_ids_key1=input_ids_pos[is_keyword_tokens1]
             input_ids_key2=input_ids_pos[is_keyword_tokens2]
             decoded_key1=tokenizer.batch_decode(input_ids_key1)
@@ -571,40 +566,6 @@ def main():
             decoded_key2=tokenizer.batch_decode(input_ids_key2)
             decoded_key2_list=[]
 
-            # print()
-            # print()
-            # dots='-'*100
-            # print(dots)
-            # print(dots)
-            # print('Step\t\t|{}'.format(global_step))
-            # print(dots)
-            # for dec1 in decoded_key1:
-            #         decoded_key1_list.append('{:8}'.format(dec1))
-            # for dec2 in decoded_key2:
-            #     decoded_key2_list.append('{:8}'.format(dec2))
-            # decoded_key1=' '.join(decoded_key1_list)
-            # decoded_key2=' '.join(decoded_key2_list)
-            
-            
-            
-            # print('Key2\t\t|{}'.format(decoded_key2))
-            # for viz_idx in range(len(input_ids_pos)):
-            #     non_special_idxs_viz=non_special_idxs.detach().cpu()[viz_idx:viz_idx+1]
-            #     input_ids_pos_viz=input_ids_pos[viz_idx:viz_idx+1]
-            #     input_ids_pos_viz=input_ids_pos_viz[non_special_idxs_viz]
-            #     decoded=tokenizer.batch_decode(input_ids_pos_viz)
-            #     decoded_list=[]
-            #     for dec in decoded:
-            #         decoded_list.append('{:8}'.format(dec))
-            #     decoded=' '.join(decoded_list)
-            #     # print('Input\t\t|{}'.format(decoded))
-            # print(dots)
-            # print('Key1\t\t|{}'.format(decoded_key1))
-            # print('Key2\t\t|{}'.format(decoded_key2))
-            # print(dots)
-            # print(dots)
-            # print()
-            # 1. MLM Result Logging
 
 
 
@@ -619,9 +580,6 @@ def main():
                 target_emb2=F.normalize(learned_embed2,p=1,dim=-1)*args.normalize_target2
             else:
                 target_emb2=learned_embed2
-            print(torch.sum(is_keyword_tokens1),len(is_keyword_tokens1))
-            # print(torch.sum(is_keyword_tokens2),len(is_keyword_tokens2))
-            
             if accelerator.is_main_process:
                 count=1
                 # for iip in input_ids_pos:
