@@ -238,12 +238,12 @@ def main():
     text_encoder = CLIPTextModel.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="text_encoder", revision=args.revision
     )
-    vae = AutoencoderKL.from_pretrained(
-        args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision, variant=args.variant
-    )
-    unet = UNet2DConditionModel.from_pretrained(
-        args.pretrained_model_name_or_path, subfolder="unet", revision=args.revision, variant=args.variant
-    )
+    # vae = AutoencoderKL.from_pretrained(
+    #     args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision, variant=args.variant
+    # )
+    # unet = UNet2DConditionModel.from_pretrained(
+    #     args.pretrained_model_name_or_path, subfolder="unet", revision=args.revision, variant=args.variant
+    # )
 
     # HERE
     mask_tokens = [args.mask_tokens]
@@ -269,39 +269,39 @@ def main():
     
     
 
-    if args.resume_unet_path and args.resume_unet_path!='None':
-        state_dict = torch.load(args.resume_unet_path, map_location=torch.device('cpu'))
-        if not isinstance(state_dict,OrderedDict):
-            state_dict=state_dict()
-        unet.load_state_dict(state_dict,strict=True)
-        print('unet parameters loaded')
-        del state_dict
-    if args.resume_text_encoder_path and args.resume_text_encoder_path!='None':
-        state_dict = torch.load(args.resume_text_encoder_path, map_location=torch.device('cpu'))
-        if not isinstance(state_dict,OrderedDict):
-            state_dict=state_dict()
-        text_encoder.load_state_dict(state_dict,strict=True)
-        print('text_encoder parameters loaded')
-        del state_dict
+    # if args.resume_unet_path and args.resume_unet_path!='None':
+    #     state_dict = torch.load(args.resume_unet_path, map_location=torch.device('cpu'))
+    #     if not isinstance(state_dict,OrderedDict):
+    #         state_dict=state_dict()
+    #     unet.load_state_dict(state_dict,strict=True)
+    #     print('unet parameters loaded')
+    #     del state_dict
+    # if args.resume_text_encoder_path and args.resume_text_encoder_path!='None':
+    #     state_dict = torch.load(args.resume_text_encoder_path, map_location=torch.device('cpu'))
+    #     if not isinstance(state_dict,OrderedDict):
+    #         state_dict=state_dict()
+    #     text_encoder.load_state_dict(state_dict,strict=True)
+    #     print('text_encoder parameters loaded')
+    #     del state_dict
 
     
 
 
 
-    # Freeze vae and unet
-    vae.requires_grad_(False)
-    unet.requires_grad_(False)
-    # Freeze all parameters except for the token embeddings in text encoder
-    text_encoder.text_model.encoder.requires_grad_(False)
-    text_encoder.text_model.final_layer_norm.requires_grad_(False)
-    text_encoder.text_model.embeddings.position_embedding.requires_grad_(False)
-    if args.gradient_checkpointing: #FAlse
-        # Keep unet in train mode if we are using gradient checkpointing to save memory.
-        # The dropout cannot be != 0 so it doesn't matter if we are in eval or train mode.
-        unet.train()
-        text_encoder.gradient_checkpointing_enable()
-        unet.enable_gradient_checkpointing()
-    unet.eval()
+    # # Freeze vae and unet
+    # vae.requires_grad_(False)
+    # unet.requires_grad_(False)
+    # # Freeze all parameters except for the token embeddings in text encoder
+    # text_encoder.text_model.encoder.requires_grad_(False)
+    # text_encoder.text_model.final_layer_norm.requires_grad_(False)
+    # text_encoder.text_model.embeddings.position_embedding.requires_grad_(False)
+    # if args.gradient_checkpointing: #FAlse
+    #     # Keep unet in train mode if we are using gradient checkpointing to save memory.
+    #     # The dropout cannot be != 0 so it doesn't matter if we are in eval or train mode.
+    #     unet.train()
+    #     text_encoder.gradient_checkpointing_enable()
+    #     unet.enable_gradient_checkpointing()
+    # unet.eval()
     # Enable TF32 for faster training on Ampere GPUs,
     # cf https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices
 
@@ -406,9 +406,9 @@ def main():
     elif accelerator.mixed_precision == "bf16":
         weight_dtype = torch.bfloat16
 
-    # Move vae and unet to device and cast to weight_dtype
-    unet.to(accelerator.device, dtype=weight_dtype)
-    vae.to(accelerator.device, dtype=weight_dtype)
+    # # Move vae and unet to device and cast to weight_dtype
+    # unet.to(accelerator.device, dtype=weight_dtype)
+    # vae.to(accelerator.device, dtype=weight_dtype)
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
     num_update_steps_per_epoch = math.ceil(len(train_dataloader_mlm_multi) / args.gradient_accumulation_steps)
@@ -442,20 +442,20 @@ def main():
         disable=not accelerator.is_local_main_process,
     )
     # keep original embeddings as reference
-    pipeline = DiffusionPipeline.from_pretrained(
-        args.pretrained_model_name_or_path,
-        text_encoder=accelerator.unwrap_model(text_encoder),
-        tokenizer=tokenizer,
-        unet=unet,
-        vae=vae,
-        safety_checker=None,
-        revision=args.revision,
-        variant=args.variant,
-        torch_dtype=weight_dtype,
-    )
-    pipeline.scheduler = DPMSolverMultistepScheduler.from_config(pipeline.scheduler.config)
-    pipeline = pipeline.to(accelerator.device)
-    pipeline.set_progress_bar_config(disable=False)
+    # pipeline = DiffusionPipeline.from_pretrained(
+    #     args.pretrained_model_name_or_path,
+    #     text_encoder=accelerator.unwrap_model(text_encoder),
+    #     tokenizer=tokenizer,
+    #     unet=unet,
+    #     vae=vae,
+    #     safety_checker=None,
+    #     revision=args.revision,
+    #     variant=args.variant,
+    #     torch_dtype=weight_dtype,
+    # )
+    # pipeline.scheduler = DPMSolverMultistepScheduler.from_config(pipeline.scheduler.config)
+    # pipeline = pipeline.to(accelerator.device)
+    # pipeline.set_progress_bar_config(disable=False)
 
     import time
     text_encoder.train()
@@ -499,6 +499,7 @@ def main():
                                 output_similarities=True,
                                 output_attentions=True,
                                 non_keyword_idxs=non_keyword_idxs,
+                                calibrate=args.calibrate
                                 )
             # is_keyword_tokens1 # 400,77
             attention_per_layers=out.attentions #[12,12,400,77,77]

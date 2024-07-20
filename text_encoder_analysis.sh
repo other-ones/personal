@@ -28,6 +28,7 @@ accelerate launch --main_process_port 1234  text_encoder_analysis.py \
   --resume_unet_path='saved_models/dreambooth_models/multi/tmp_multi_learned_embeds/checkpoints/checkpoint-2000/unet_s2000.pt' \
   --resume_text_encoder_path='saved_models/dreambooth_models/multi/tmp_multi_learned_embeds/checkpoints/checkpoint-2000/text_encoder_s2000.pt' \
   --include_prior_concept=1 \
-  --run_name='tmp' 
+  --run_name='tmp' \
+  --calibrate=10
 
   

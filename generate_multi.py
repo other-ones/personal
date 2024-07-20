@@ -114,6 +114,7 @@ def main(args):
 
     exp_name=args.resume_unet_path.split('/')[-4]
     exp_dir=os.path.join(args.output_dir,exp_name)
+    exp_dir+='_calibrate{}'.format(args.calibrate)
     sample_dir = os.path.join(exp_dir,'generated')
     merged_dir = os.path.join(exp_dir,'merged')
     os.makedirs(sample_dir, exist_ok=True)
@@ -123,7 +124,7 @@ def main(args):
         codepath=os.path.join(exp_dir,'src')
         # if os.path.exists(codepath) and 'tmp' not in codepath:
         #     assert False
-        caption_path = os.path.join(args.output_dir,exp_name,'captions.json')
+        caption_path = os.path.join(exp_dir,'captions.json')
         caption_file=open(caption_path,'w')
         os.makedirs(codepath,exist_ok=True)
         os.system('cp *.py {}'.format(codepath))
