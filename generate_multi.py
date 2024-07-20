@@ -313,9 +313,13 @@ def main(args):
             print(sample_dir,'sample_dir')
             is_keyword_tokens1_list=[]
             is_keyword_tokens2_list=[]
+            is_prior1_list=[]
+            is_prior2_list=[]
             for prompt in prompts:
                 is_keyword_tokens1=[False]
                 is_keyword_tokens2=[False]
+                is_prior1=[False]
+                is_prior2=[False]
                 text_words=prompt.split()
                 for word_idx in range(len(text_words)):
                     cap_word=text_words[word_idx]
@@ -323,6 +327,7 @@ def main(args):
                     num_tokens=len(word_token_ids)
                     # print(cap_word,placeholder_tokens[0],'cap_word')
                     for tok_id in word_token_ids:
+                        # keyword index
                         if cap_word == placeholder_tokens[0]:
                             is_keyword_tokens1.append(True)
                         else:
@@ -331,27 +336,52 @@ def main(args):
                             is_keyword_tokens2.append(True)
                         else:
                             is_keyword_tokens2.append(False)
+                        # prior index
+                        if cap_word==prior_word1:
+                            is_prior1.append(True)
+                        else:
+                            is_prior1.append(False)
+                        if cap_word==prior_word1:
+                            is_prior2.append(True)
+                        else:
+                            is_prior2.append(False)
                 # 3) is_keyword_tokens - keyword indices for MLM
                 for _ in range(len(is_keyword_tokens1),tokenizer.model_max_length):
                     is_keyword_tokens1.append(False)
                 for _ in range(len(is_keyword_tokens2),tokenizer.model_max_length):
                     is_keyword_tokens2.append(False)
+                for _ in range(len(is_prior1),tokenizer.model_max_length):
+                    is_prior1.append(False)
+                for _ in range(len(is_prior2),tokenizer.model_max_length):
+                    is_prior2.append(False)
                 assert len(is_keyword_tokens1)==tokenizer.model_max_length
                 assert len(is_keyword_tokens2)==tokenizer.model_max_length
+                assert len(is_prior1)==tokenizer.model_max_length
+                assert len(is_prior2)==tokenizer.model_max_length
                 is_keyword_tokens1=torch.BoolTensor(is_keyword_tokens1)
                 is_keyword_tokens2=torch.BoolTensor(is_keyword_tokens2)
-                assert torch.sum(is_keyword_tokens1)==1,'is_keyword_tokens1'
-                assert torch.sum(is_keyword_tokens2)==1,'is_keyword_tokens2'
+                is_prior1=torch.BoolTensor(is_prior1)
+                is_prior2=torch.BoolTensor(is_prior2)
+                assert torch.sum(is_keyword_tokens1)==1,'invalid is_keyword_tokens1'
+                assert torch.sum(is_keyword_tokens2)==1,'invalid is_keyword_tokens2'
+                assert torch.sum(is_prior1)==1,'invalid is_prior1'
+                assert torch.sum(is_prior2)==1,'invalid is_prior2'
                 is_keyword_tokens1_list.append(is_keyword_tokens1)
                 is_keyword_tokens2_list.append(is_keyword_tokens2)
+                is_prior1_list.append(is_prior1)
+                is_prior2_list.append(is_prior2)
             is_keyword_tokens1_list = torch.stack(is_keyword_tokens1_list)
             is_keyword_tokens2_list = torch.stack(is_keyword_tokens2_list)
+            is_prior1_list = torch.stack(is_prior1_list)
+            is_prior2_list = torch.stack(is_prior2_list)
             images = pipeline(prompt=prompts, 
                             num_inference_steps=50, 
                             guidance_scale=7.5, width=512, height=512,
                             num_images_per_prompt=1,
                             is_keyword_tokens1=is_keyword_tokens1_list,
                             is_keyword_tokens2=is_keyword_tokens2_list,
+                            is_prior1=is_prior1_list,
+                            is_prior2=is_prior2_list,
                             calibrate=args.calibrate
                             ).images
             

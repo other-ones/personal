@@ -313,6 +313,8 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
         lora_scale: Optional[float] = None,
         is_keyword_tokens1= None,
         is_keyword_tokens2= None,
+        is_prior1= None,
+        is_prior2= None,
         calibrate= False,
     ):
         r"""
@@ -391,6 +393,8 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
                 attention_mask=attention_mask,
                 is_keyword_tokens1=is_keyword_tokens1,
                 is_keyword_tokens2=is_keyword_tokens2,
+                is_prior1=is_prior1,
+                is_prior2=is_prior2,
                 calibrate=calibrate,
             )
             prompt_embeds = prompt_embeds[0]
@@ -596,6 +600,8 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
         verbose=True,
         is_keyword_tokens1=None,
         is_keyword_tokens2=None,
+        is_prior1=None,
+        is_prior2=None,
         calibrate=False,
     ):
         r"""
@@ -713,6 +719,8 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
             # inj_embeddings1=inj_embeddings1,
             is_keyword_tokens1=is_keyword_tokens1,
             is_keyword_tokens2=is_keyword_tokens2,
+            is_prior1=is_prior1,
+            is_prior2=is_prior2,
             calibrate=calibrate,
         )
         # pdb.set_trace() 

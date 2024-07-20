@@ -33,7 +33,7 @@ accelerate launch --main_process_port 2731  generate_multi.py \
   --train_data_dir1=$DATA_DIR1 \
   --train_data_dir2=$DATA_DIR2 \
   --resolution=512 \
-  --output_dir="results/multi/pet_cat1_pet_dog1" \
+  --output_dir="results/multi/cal_pos_neg/pet_cat1_pet_dog1" \
   --seed=1234 \
   --mask_tokens="[MASK]" \
   --resume_unet_path='saved_models/dreambooth_models/multi/tmp_multi_learned_embeds_sim01_margin0/checkpoints/checkpoint-2000/unet_s2000.pt' \
@@ -46,5 +46,5 @@ accelerate launch --main_process_port 2731  generate_multi.py \
   --prompt_type='two_pets' \
   --eval_batch_size=20 \
   --num_images_per_prompt=15 \
-  --calibrate=100
+  --calibrate=10
 
