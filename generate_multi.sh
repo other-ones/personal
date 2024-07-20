@@ -46,5 +46,5 @@ accelerate launch --main_process_port 2731  generate_multi.py \
   --prompt_type='two_pets' \
   --eval_batch_size=20 \
   --num_images_per_prompt=15 \
-  --calibrate=10
+  --calibrate_pos=10
 

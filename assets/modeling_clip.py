@@ -302,8 +302,8 @@ class CLIPAttention(nn.Module):
 
         if calibrate:
             print(torch.sum(attn_weights),'before')
-
             if is_keyword_tokens1 is not None and is_keyword_tokens2 is not None:
+                print('k1-k2 calibration')
                 attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
                 # HERE
 

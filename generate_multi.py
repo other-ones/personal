@@ -382,7 +382,8 @@ def main(args):
                             is_keyword_tokens2=is_keyword_tokens2_list,
                             is_prior1=is_prior1_list,
                             is_prior2=is_prior2_list,
-                            calibrate=args.calibrate
+                            calibrate_pos=args.calibrate_pos,
+                            calibrate_neg=args.calibrate_neg,
                             ).images
             
             # 
