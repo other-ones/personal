@@ -275,6 +275,7 @@ class CLIPAttention(nn.Module):
             is_keyword_tokens1=is_keyword_tokens1.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
             is_keyword_tokens2=is_keyword_tokens2.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
             # Prior index
+        if is_prior1 is not None and is_prior2 is not None:
             is_prior1=is_prior1.unsqueeze(1).repeat(1,self.num_heads,1) # 400,77,1-> 400,77,12
             is_prior1=is_prior1.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
             is_prior2=is_prior2.unsqueeze(1).repeat(1,self.num_heads,1) # 400,77,1-> 400,77,12
@@ -308,21 +309,23 @@ class CLIPAttention(nn.Module):
             k1_scores=attn_weights[is_keyword_tokens1].view(bsz * self.num_heads, tgt_len) # 4800,77
             k2_scores=attn_weights[is_keyword_tokens2].view(bsz * self.num_heads, tgt_len) # 4800,77
 
-            # k1
+            # k1 - neg
             k1_min_scores=torch.min(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
-            k1_max_scores=torch.max(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
             k1_k2_scores=k1_scores[is_keyword_tokens2].view(bsz * self.num_heads,1)# 4800,1
-            k1_prior1_scores=k1_scores[is_prior1].view(bsz * self.num_heads,1)# 4800,1
             offsets_neg1=torch.abs(k1_k2_scores-k1_min_scores)
+            # k1 - pos
+            k1_max_scores=torch.max(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
+            k1_prior1_scores=k1_scores[is_prior1].view(bsz * self.num_heads,1)# 4800,1
             offsets_pos1=torch.abs(k1_max_scores-k1_prior1_scores)
 
 
-            # k2
+            # k2 - neg
             k2_min_scores=torch.min(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
-            k2_max_scores=torch.max(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
             k2_k1_scores=k2_scores[is_keyword_tokens1].view(bsz * self.num_heads,1) # 4800,1
-            k2_prior2_scores=k2_scores[is_prior2].view(bsz * self.num_heads,1) # 4800,1
             offsets_neg2=torch.abs(k2_k1_scores-k2_min_scores)
+            # k2 - pos
+            k2_max_scores=torch.max(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
+            k2_prior2_scores=k2_scores[is_prior2].view(bsz * self.num_heads,1) # 4800,1
             offsets_pos2=torch.abs(k2_max_scores-k2_prior2_scores)
 
 
