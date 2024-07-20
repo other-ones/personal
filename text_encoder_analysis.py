@@ -41,7 +41,7 @@ from diffusers import (
     DDPMScheduler,
     DiffusionPipeline,
     DPMSolverMultistepScheduler,
-    StableDiffusionPipeline,
+    StableDiffusionPipelineConcept,
     UNet2DConditionModel,
 )
 from diffusers.optimization import get_scheduler
@@ -67,91 +67,6 @@ from datasets_pkgs.dataset_analysis_multi import TextualInversionDatasetMulti
 
 logger = get_logger(__name__)
 
-
-
-def log_validation(tokenizer, args, accelerator, target_emb1,target_emb2,pipeline):
-    logger.info(
-        f"Running validation... \n Generating {args.num_validation_images} images with prompt:"
-        f" {args.validation_prompt}."
-    )
-    # create pipeline (note: unet and vae are loaded again in float32)
-    
-
-    # run inference
-    generator = None if args.seed is None else torch.Generator(device=accelerator.device).manual_seed(args.seed)
-    # dog
-    if args.include_prior_concept:
-        placeholder1='{} {}'.format(args.placeholder_token1,args.prior_concept1)
-        placeholder2='{} {}'.format(args.placeholder_token2,args.prior_concept2)
-    else:
-        placeholder1='{}'.format(args.placeholder_token1)
-        placeholder2='{}'.format(args.placeholder_token2)
-
-    if args.prompt_type=='two_pets':
-        validation_prompts=[
-            "a picture of {} swimming in a pool".format(placeholder1),
-            "a picture of {} swimming in a pool".format(placeholder2),
-            "a picture of {} and {}".format(placeholder1,placeholder2),
-            "a picture of {} and {} swimming in a pool".format(placeholder1,placeholder2),
-            "a picture of {} and {} with the Great Wall of China in the background".format(placeholder1,placeholder2),
-            "a picture of {} lying next to {}".format(placeholder1,placeholder2),
-            "a picture of {} playing with {}".format(placeholder1,placeholder2),
-            "a picture of {} chasing {}".format(placeholder1,placeholder2),
-            ]
-    # vase
-    else:
-        assert False
-    print(validation_prompts[0],'validation_prompts')
-    print('Start Inference')
-    is_keyword_tokens_list1=[]
-    is_keyword_tokens_list2=[]
-    for prompt in validation_prompts:
-        is_keyword_tokens1=[False]
-        is_keyword_tokens2=[False]
-        text_words=prompt.split()
-        for word_idx in range(len(text_words)):
-            cap_word=text_words[word_idx]
-            word_token_ids=tokenizer.encode(cap_word,add_special_tokens=False)
-            num_tokens=len(word_token_ids)
-            for tok_id in word_token_ids:
-                if args.placeholder_token1 in cap_word:
-                    is_keyword_tokens1.append(True)
-                else:
-                    is_keyword_tokens1.append(False)
-                if args.placeholder_token2 in cap_word:
-                    is_keyword_tokens2.append(True)
-                else:
-                    is_keyword_tokens2.append(False)
-        for _ in range(len(is_keyword_tokens1),tokenizer.model_max_length):
-            is_keyword_tokens1.append(False)
-        for _ in range(len(is_keyword_tokens2),tokenizer.model_max_length):
-            is_keyword_tokens2.append(False)
-        assert len(is_keyword_tokens1)==tokenizer.model_max_length
-        assert len(is_keyword_tokens2)==tokenizer.model_max_length
-        is_keyword_tokens1=torch.BoolTensor(is_keyword_tokens1)
-        is_keyword_tokens2=torch.BoolTensor(is_keyword_tokens2)
-        is_keyword_tokens_list1.append(is_keyword_tokens1)
-        is_keyword_tokens_list2.append(is_keyword_tokens2)
-    is_keyword_tokens_list1=torch.stack(is_keyword_tokens_list1)
-    is_keyword_tokens_list2=torch.stack(is_keyword_tokens_list2)
-    if torch.backends.mps.is_available():
-        autocast_ctx = nullcontext()
-    else:
-        autocast_ctx = torch.autocast(accelerator.device.type)
-    with autocast_ctx:
-        images = pipeline(validation_prompts, num_inference_steps=25, generator=generator,
-                          inj_embeddings1=target_emb1,
-                          inj_embeddings2=target_emb2,
-                          is_keyword_tokens1=is_keyword_tokens_list1,
-                          is_keyword_tokens2=is_keyword_tokens_list2
-                          ).images
-    print('Generated')
-
-
-
-    del pipeline
-    torch.cuda.empty_cache()
-    return images,validation_prompts
 
 
 
@@ -356,13 +271,16 @@ def main():
         non_keyword_idxs = [example["non_keyword_idxs"] for example in examples] #N,77, list of booleans
         non_keyword_idxs = torch.stack(non_keyword_idxs)
         
-        # for contrast
         is_keyword_tokens1 = [example["is_keyword_tokens1"] for example in examples] #N,77, list of booleans
         is_keyword_tokens1 = torch.stack(is_keyword_tokens1)
         is_keyword_tokens2 = [example["is_keyword_tokens2"] for example in examples] #N,77, list of booleans
         is_keyword_tokens2 = torch.stack(is_keyword_tokens2)
-        # for contrast
 
+        is_prior1 = [example["is_prior1"] for example in examples] #N,77, list of booleans
+        is_prior1 = torch.stack(is_prior1)
+        is_prior2 = [example["is_prior2"] for example in examples] #N,77, list of booleans
+        is_prior2 = torch.stack(is_prior2)
+        # for contrast
         
         # 3. For MLM 
 
@@ -374,6 +292,8 @@ def main():
             "non_keyword_idxs": non_keyword_idxs,
             "is_keyword_tokens1": is_keyword_tokens1,# for triplet
             "is_keyword_tokens2": is_keyword_tokens2,# for triplet
+            "is_prior1": is_prior1,# for triplet
+            "is_prior2": is_prior2,# for triplet
         }
         return batch
     train_dataloader_mlm_multi = torch.utils.data.DataLoader(
@@ -467,6 +387,8 @@ def main():
         non_keyword_idxs=batch_text_multi["non_keyword_idxs"]
         is_keyword_tokens1=batch_text_multi["is_keyword_tokens1"].to(accelerator.device)
         is_keyword_tokens2=batch_text_multi["is_keyword_tokens2"].to(accelerator.device)
+        is_prior1=batch_text_multi["is_prior1"].to(accelerator.device)
+        is_prior2=batch_text_multi["is_prior2"].to(accelerator.device)
         # for multi MLM
         input_ids_key1=input_ids_pos[is_keyword_tokens1]
         input_ids_key2=input_ids_pos[is_keyword_tokens2]
@@ -499,7 +421,9 @@ def main():
                                 output_similarities=True,
                                 output_attentions=True,
                                 non_keyword_idxs=non_keyword_idxs,
-                                calibrate=args.calibrate
+                                calibrate=args.calibrate,
+                                is_prior1=is_prior1,
+                                is_prior2=is_prior2,
                                 )
             # is_keyword_tokens1 # 400,77
             attention_per_layers=out.attentions #[12,12,400,77,77]

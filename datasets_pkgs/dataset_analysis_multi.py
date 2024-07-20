@@ -234,6 +234,8 @@ class TextualInversionDatasetMulti(Dataset):
         
         is_keyword_tokens1=[False] # first token for <startoftext>
         is_keyword_tokens2=[False] # first token for <startoftext>
+        is_prior1=[False] # first token for <startoftext>
+        is_prior2=[False] # first token for <startoftext>
         words_split=caption.split()
         non_special_idxs=[False]
         non_keyword_idxs=[False]
@@ -245,24 +247,50 @@ class TextualInversionDatasetMulti(Dataset):
             for tok_id in word_token_ids:
                 tok_decoded=self.tokenizer.decode(tok_id)
                 # 2) keyword indices and labels for MLM.
-                if tok_id in self.placeholder_ids:
-                    if tok_id == self.placeholder_ids[0]:
-                        assert num_tokens==1
-                        is_keyword_tokens1.append(True)
-                    else:
-                        is_keyword_tokens1.append(False)
-                        
-                    if tok_id == self.placeholder_ids[1]:
-                        assert num_tokens==1
-                        is_keyword_tokens2.append(True)
-                    else:
-                        is_keyword_tokens2.append(False)
-                    non_keyword_idxs.append(False)
+                # keyword1
+                if tok_id==self.placeholder_ids[0]:
+                    is_keyword_tokens1.append(True)
                 else:
-                    non_keyword_idxs.append(True)
                     is_keyword_tokens1.append(False)
+                # keyword2
+                if tok_id==self.placeholder_ids[1]:
+                    is_keyword_tokens2.append(True)
+                else:
                     is_keyword_tokens2.append(False)
-         
+                # nonkeyword
+                if tok_id not in self.placeholder_ids:
+                    non_keyword_idxs.append(True)
+                else:
+                    non_keyword_idxs.append(False)
+                # prior1
+                if tok_decoded==self.prior_concepts[0]:
+                    is_prior1.append(True)
+                else:
+                    is_prior1.append(False)
+                # prior2
+                if tok_decoded==self.prior_concepts[1]:
+                    is_prior2.append(True)
+                else:
+                    is_prior2.append(False)
+                # if tok_id in self.placeholder_ids:
+                #     if tok_id == self.placeholder_ids[0]:
+                #         assert num_tokens==1
+                #         is_keyword_tokens1.append(True)
+                #     else:
+                #         is_keyword_tokens1.append(False)
+                        
+                #     if tok_id == self.placeholder_ids[1]:
+                #         assert num_tokens==1
+                #         is_keyword_tokens2.append(True)
+                #     else:
+                #         is_keyword_tokens2.append(False)
+                #     non_keyword_idxs.append(False)
+                # else:
+                #     non_keyword_idxs.append(True)
+                #     is_keyword_tokens1.append(False)
+                #     is_keyword_tokens2.append(False)
+                
+                
        
         
 
@@ -303,6 +331,19 @@ class TextualInversionDatasetMulti(Dataset):
             is_keyword_tokens2.append(False)
         example["is_keyword_tokens2"]=torch.BoolTensor(is_keyword_tokens2)
         # is_keyword_tokens_mlm
+
+        # prior1
+        for _ in range(len(is_prior1),self.tokenizer.model_max_length):
+            is_prior1.append(False)
+        assert len(is_prior1)==self.tokenizer.model_max_length
+        is_prior1=torch.BoolTensor(is_prior1)
+        example['is_prior1']=is_prior1
+        # prior2
+        for _ in range(len(is_prior2),self.tokenizer.model_max_length):
+            is_prior2.append(False)
+        assert len(is_prior2)==self.tokenizer.model_max_length
+        is_prior2=torch.BoolTensor(is_prior2)
+        example['is_prior2']=is_prior2
 
         
         
