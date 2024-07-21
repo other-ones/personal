@@ -1,3 +1,4 @@
+from utils import float_to_str
 import time
 import numpy as np
 import os
@@ -33,9 +34,7 @@ def get_gpu_memory():
     memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
     memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
     return memory_free_values
-def float_to_str(f):
-    s = f"{f:.15f}"  # Start with a high precision
-    return s.rstrip('0').rstrip('.') if '.' in s else s
+
 stats=get_gpu_memory()
 for stat_idx,stat in enumerate(stats):
     if stat>2e4:

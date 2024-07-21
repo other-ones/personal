@@ -1,3 +1,4 @@
+
 from PIL import Image
 from PIL import ImageDraw,ImageFont
 
@@ -30,3 +31,7 @@ def render_caption(image, text, coords, font_path='fonts/GoNotoCurrent.ttf'):
         current_x += word_width + draw.textsize(" ", font=font)[0]  # Add space width
 
     return image
+
+def float_to_str(f):
+    s = f"{f:.15f}"  # Start with a high precision
+    return s.rstrip('0').rstrip('.') if '.' in s else s

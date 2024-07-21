@@ -1,3 +1,5 @@
+
+from utils import float_to_str
 from utils import render_caption
 import time
 
@@ -114,7 +116,12 @@ def main(args):
 
     exp_name=args.resume_unet_path.split('/')[-4]
     exp_dir=os.path.join(args.output_dir,exp_name)
-    exp_dir+='_calibrate{}'.format(args.calibrate)
+    poscal_str=float_to_str(args.calibrate_pos)
+    negcal_str=float_to_str(args.calibrate_neg)
+    poscal_str=poscal_str.replace('.','')
+    negcal_str=negcal_str.replace('.','')
+    exp_dir+='_poscal{}'.format(poscal_str)
+    exp_dir+='_negcal{}'.format(negcal_str)
     sample_dir = os.path.join(exp_dir,'generated')
     merged_dir = os.path.join(exp_dir,'merged')
     os.makedirs(sample_dir, exist_ok=True)

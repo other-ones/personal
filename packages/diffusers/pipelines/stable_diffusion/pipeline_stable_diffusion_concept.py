@@ -604,7 +604,8 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
         is_keyword_tokens2=None,
         is_prior1=None,
         is_prior2=None,
-        calibrate=False,
+        calibrate_pos=0,
+        calibrate_neg=0,
     ):
         r"""
         Function invoked when calling the pipeline for generation.
@@ -723,7 +724,8 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
             is_keyword_tokens2=is_keyword_tokens2,
             is_prior1=is_prior1,
             is_prior2=is_prior2,
-            calibrate=calibrate,
+            calibrate_neg=calibrate_neg,
+            calibrate_pos=calibrate_pos,
         )
         # pdb.set_trace() 
         # 4. Prepare timesteps

@@ -257,10 +257,10 @@ class CLIPAttention(nn.Module):
         output_attentions: Optional[bool] = False,
         is_keyword_tokens1=None,
         is_keyword_tokens2=None,
-        scaler=10,
-        calibrate=1,
         is_prior1=None,
         is_prior2=None,
+        calibrate_pos=0,
+        calibrate_neg=0,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         # hidden_states: 400, 77, 768
         # is_keyword_tokens1: 400, 77
@@ -270,16 +270,26 @@ class CLIPAttention(nn.Module):
         bsz, tgt_len, embed_dim = hidden_states.size()
 
         if is_keyword_tokens1 is not None and is_keyword_tokens2 is not None:
-            is_keyword_tokens1=is_keyword_tokens1.unsqueeze(1).repeat(1,self.num_heads,1) # 400,77,1-> 400,77,12
-            is_keyword_tokens2=is_keyword_tokens2.unsqueeze(1).repeat(1,self.num_heads,1) # 400,77,1-> 400,77,12
-            is_keyword_tokens1=is_keyword_tokens1.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
-            is_keyword_tokens2=is_keyword_tokens2.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
+            is_keyword_tokens1=is_keyword_tokens1.unsqueeze(1).repeat(1,self.num_heads,1) # 400,1,77-> 400,12,77
+            is_keyword_tokens2=is_keyword_tokens2.unsqueeze(1).repeat(1,self.num_heads,1) # 400,1,77-> 400,12,77
+            is_keyword_tokens1=is_keyword_tokens1.view(bsz*self.num_heads,tgt_len) # 400,12,77 -> 4800,77
+            is_keyword_tokens2=is_keyword_tokens2.view(bsz*self.num_heads,tgt_len) # 400,12,77 -> 4800,77
+            # is_keyword_tokens1=is_keyword_tokens1.unsqueeze(-1).repeat(1,1,self.num_heads) # 400,77,1-> 400,77,12
+            # is_keyword_tokens2=is_keyword_tokens2.unsqueeze(-1).repeat(1,1,self.num_heads) # 400,77,1-> 400,77,12
+            # is_keyword_tokens1=is_keyword_tokens1.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
+            # is_keyword_tokens2=is_keyword_tokens2.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
+            
             # Prior index
         if is_prior1 is not None and is_prior2 is not None:
-            is_prior1=is_prior1.unsqueeze(1).repeat(1,self.num_heads,1) # 400,77,1-> 400,77,12
-            is_prior1=is_prior1.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
-            is_prior2=is_prior2.unsqueeze(1).repeat(1,self.num_heads,1) # 400,77,1-> 400,77,12
-            is_prior2=is_prior2.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
+            is_prior1=is_prior1.unsqueeze(1).repeat(1,self.num_heads,1) # 400,1,77-> 400,12,77
+            is_prior2=is_prior2.unsqueeze(1).repeat(1,self.num_heads,1) # 400,1,77-> 400,12,77
+            is_prior1=is_prior1.view(bsz*self.num_heads,tgt_len) # 400,12,77 -> 4800,77
+            is_prior2=is_prior2.view(bsz*self.num_heads,tgt_len) # 400,12,77 -> 4800,77
+            # is_prior1=is_prior1.unsqueeze(-1).repeat(1,1,self.num_heads) # 400,77,1-> 400,77,12
+            # is_prior2=is_prior2.unsqueeze(-1).repeat(1,1,self.num_heads) # 400,77,1-> 400,77,12
+            # is_prior1=is_prior1.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
+            # is_prior2=is_prior2.view(bsz*self.num_heads,tgt_len) # 400,77,12 -> 4800,77
+            
         # get query proj
         proj_shape = (bsz * self.num_heads, -1, self.head_dim)
         query_states = self.q_proj(hidden_states) * self.scale
@@ -300,50 +310,48 @@ class CLIPAttention(nn.Module):
 
 
 
-        if calibrate:
+        if calibrate_neg or calibrate_pos:
             print(torch.sum(attn_weights),'before')
-            if is_keyword_tokens1 is not None and is_keyword_tokens2 is not None:
-                print('k1-k2 calibration')
-                attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
-                # HERE
-
-                k1_scores=attn_weights[is_keyword_tokens1].view(bsz * self.num_heads, tgt_len) # 4800,77
-                k2_scores=attn_weights[is_keyword_tokens2].view(bsz * self.num_heads, tgt_len) # 4800,77
-
-                # k1 - neg
-                k1_min_scores=torch.min(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
-                k1_k2_scores=k1_scores[is_keyword_tokens2].view(bsz * self.num_heads,1)# 4800,1
-                offsets_neg1=torch.abs(k1_k2_scores-k1_min_scores)
-                
-                # k2 - neg
-                k2_min_scores=torch.min(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
-                k2_k1_scores=k2_scores[is_keyword_tokens1].view(bsz * self.num_heads,1) # 4800,1
-                offsets_neg2=torch.abs(k2_k1_scores-k2_min_scores)
-                # calibrate scores
-                k1_k2_scores=k1_k2_scores.view(bsz * self.num_heads,1)-(offsets_neg1*scaler)
-                k2_k1_scores=k2_k1_scores.view(bsz * self.num_heads,1)-(offsets_neg2*scaler)
-                k1_scores[is_keyword_tokens2]=k1_k2_scores.view(bsz * self.num_heads)
-                k2_scores[is_keyword_tokens1]=k2_k1_scores.view(bsz * self.num_heads)
-                
+            attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
+            k1_scores=attn_weights[is_keyword_tokens1].view(bsz * self.num_heads, tgt_len) # 4800,77
+            k2_scores=attn_weights[is_keyword_tokens2].view(bsz * self.num_heads, tgt_len) # 4800,77
+            # HERE
+        if calibrate_neg:
+            # k1 - neg
+            print('k1-k2 calibration')
+            k1_min_scores=torch.min(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
+            k1_k2_scores=k1_scores[is_keyword_tokens2].view(bsz * self.num_heads,1)# 4800,1
+            offsets_k1_k2=torch.abs(k1_k2_scores-k1_min_scores)
             
-            if is_prior1 is not None and is_prior2 is not None:
-                print('prior calibration')
-                # k1 - pos
-                k1_max_scores=torch.max(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
-                k1_prior1_scores=k1_scores[is_prior1].view(bsz * self.num_heads,1)# 4800,1
-                offsets_pos1=torch.abs(k1_max_scores-k1_prior1_scores)
-
-
-                # k2 - pos
-                k2_max_scores=torch.max(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
-                k2_prior2_scores=k2_scores[is_prior2].view(bsz * self.num_heads,1) # 4800,1
-                offsets_pos2=torch.abs(k2_max_scores-k2_prior2_scores)
-                # calibrate scores
-                k1_prior1_scores=k1_prior1_scores.view(bsz * self.num_heads,1)+(offsets_pos1*scaler)
-                k2_prior2_scores=k2_prior2_scores.view(bsz * self.num_heads,1)+(offsets_pos2*scaler)
-                k1_scores[is_prior1]=k1_prior1_scores.view(bsz * self.num_heads)
-                k2_scores[is_prior2]=k2_prior2_scores.view(bsz * self.num_heads)
+            # k2 - neg
+            k2_min_scores=torch.min(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
+            k2_k1_scores=k2_scores[is_keyword_tokens1].view(bsz * self.num_heads,1) # 4800,1
+            offsets_k2_k1=torch.abs(k2_k1_scores-k2_min_scores)
+            # calibrate scores
+            k1_k2_scores=k1_k2_scores.view(bsz * self.num_heads,1)-(offsets_k1_k2*calibrate_neg)
+            k2_k1_scores=k2_k1_scores.view(bsz * self.num_heads,1)-(offsets_k2_k1*calibrate_neg)
+            k1_scores[is_keyword_tokens2]=k1_k2_scores.view(bsz * self.num_heads)
+            k2_scores[is_keyword_tokens1]=k2_k1_scores.view(bsz * self.num_heads)
                 
+        if calibrate_pos:
+            print('prior calibration')
+            # k1 - pos
+            k1_max_scores=torch.max(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
+            k1_prior1_scores=k1_scores[is_prior1].view(bsz * self.num_heads,1)# 4800,1
+            offsets_k1_prior1=torch.abs(k1_max_scores-k1_prior1_scores)
+
+
+            # k2 - pos
+            k2_max_scores=torch.max(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
+            k2_prior2_scores=k2_scores[is_prior2].view(bsz * self.num_heads,1) # 4800,1
+            offsets_k2_prior2=torch.abs(k2_max_scores-k2_prior2_scores)
+            # calibrate scores
+            k1_prior1_scores=k1_prior1_scores.view(bsz * self.num_heads,1)+(offsets_k1_prior1*calibrate_pos)
+            k2_prior2_scores=k2_prior2_scores.view(bsz * self.num_heads,1)+(offsets_k2_prior2*calibrate_pos)
+            k1_scores[is_prior1]=k1_prior1_scores.view(bsz * self.num_heads)
+            k2_scores[is_prior2]=k2_prior2_scores.view(bsz * self.num_heads)
+        
+        if calibrate_pos or calibrate_neg:
             # modify
             k1_scores=k1_scores.view(bsz * self.num_heads, tgt_len)
             k2_scores=k2_scores.view(bsz * self.num_heads, tgt_len)
@@ -354,7 +362,6 @@ class CLIPAttention(nn.Module):
             attn_weights=attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
             print(torch.sum(attn_weights),'after')
 
-        # exit()
         # HERE
         # torch.Size([4800, 77, 64]) value_states.shape
         # torch.Size([4800, 77, 64]) key_states.shape
@@ -450,9 +457,10 @@ class CLIPEncoderLayer(nn.Module):
         output_attentions: Optional[bool] = False,
         is_keyword_tokens1=None,
         is_keyword_tokens2=None,
-        calibrate=None,
         is_prior1=None,
         is_prior2=None,
+        calibrate_pos=0,
+        calibrate_neg=0,
     ) -> Tuple[torch.FloatTensor]:
         """
         Args:
@@ -474,9 +482,10 @@ class CLIPEncoderLayer(nn.Module):
             output_attentions=output_attentions,
             is_keyword_tokens1=is_keyword_tokens1,
             is_keyword_tokens2=is_keyword_tokens2,
-            calibrate=calibrate,
             is_prior1=is_prior1,
             is_prior2=is_prior2,
+            calibrate_pos=calibrate_pos,
+            calibrate_neg=calibrate_neg,
         )
         hidden_states = residual + hidden_states
 
@@ -689,9 +698,10 @@ class CLIPEncoder(nn.Module):
         is_keyword_tokens2: Optional[bool] = None,
         non_keyword_idxs: Optional[bool] = None,
         output_similarities: Optional[bool] = None,
-        calibrate: Optional[bool] = None,
         is_prior1: Optional[bool] = None,
         is_prior2: Optional[bool] = None,
+        calibrate_pos: Optional[bool] = None,
+        calibrate_neg: Optional[bool] = None,
     ) -> Union[Tuple, BaseModelOutput]:
         r"""
         Args:
@@ -757,9 +767,10 @@ class CLIPEncoder(nn.Module):
                     output_attentions=output_attentions,
                     is_keyword_tokens1=is_keyword_tokens1,
                     is_keyword_tokens2=is_keyword_tokens2,
-                    calibrate=calibrate,
                     is_prior1=is_prior1,
                     is_prior2=is_prior2,
+                    calibrate_pos=calibrate_pos,
+                    calibrate_neg=calibrate_neg,
                 )
 
             hidden_states = layer_outputs[0]
@@ -837,7 +848,8 @@ class CLIPTextTransformer(nn.Module):
         inj_embeddings2=None,
         output_similarities=None,
         non_keyword_idxs=None,
-        calibrate=False,
+        calibrate_pos=0,
+        calibrate_neg=0,
         is_prior1=None,
         is_prior2=None,
     ) -> Union[Tuple, BaseModelOutputWithPooling]:
@@ -885,9 +897,10 @@ class CLIPTextTransformer(nn.Module):
             is_keyword_tokens1=is_keyword_tokens1,
             is_keyword_tokens2=is_keyword_tokens2,
             non_keyword_idxs=non_keyword_idxs,
-            calibrate=calibrate,
             is_prior1=is_prior1,
             is_prior2=is_prior2,
+            calibrate_pos=calibrate_pos,
+            calibrate_neg=calibrate_neg,
         )
 
         last_hidden_state = encoder_outputs[0]
@@ -975,7 +988,8 @@ class CLIPTextModel(CLIPPreTrainedModel):
         non_keyword_idxs=False,
         is_prior1=None,
         is_prior2=None,
-        calibrate=False,
+        calibrate_pos=0,
+        calibrate_neg=0,
     ) -> Union[Tuple, BaseModelOutputWithPooling]:
         r"""
         Returns:
@@ -1011,9 +1025,11 @@ class CLIPTextModel(CLIPPreTrainedModel):
             inj_embeddings2=inj_embeddings2,
             output_similarities=output_similarities,
             non_keyword_idxs=non_keyword_idxs,
-            calibrate=calibrate,
             is_prior1=is_prior1,
             is_prior2=is_prior2,
+            calibrate_pos=calibrate_pos,
+            calibrate_neg=calibrate_neg,
+
         )
 
 
