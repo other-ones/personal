@@ -315,8 +315,10 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
         is_keyword_tokens2= None,
         is_prior1= None,
         is_prior2= None,
-        calibrate_pos= 0,
-        calibrate_neg= 0,
+        calibrate_kpos= 0,
+        calibrate_ppos= 0,
+        calibrate_kneg= 0,
+        calibrate_pneg= 0,
     ):
         r"""
         Encodes the prompt into text encoder hidden states.
@@ -396,8 +398,10 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
                 is_keyword_tokens2=is_keyword_tokens2,
                 is_prior1=is_prior1,
                 is_prior2=is_prior2,
-                calibrate_pos=calibrate_pos,
-                calibrate_neg=calibrate_neg,
+                calibrate_kpos=calibrate_kpos,
+                calibrate_ppos=calibrate_ppos,
+                calibrate_kneg=calibrate_kneg,
+                calibrate_pneg=calibrate_pneg,
             )
             prompt_embeds = prompt_embeds[0]
 
@@ -604,8 +608,10 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
         is_keyword_tokens2=None,
         is_prior1=None,
         is_prior2=None,
-        calibrate_pos=0,
-        calibrate_neg=0,
+        calibrate_kpos=0,
+        calibrate_ppos=0,
+        calibrate_kneg=0,
+        calibrate_pneg=0,
     ):
         r"""
         Function invoked when calling the pipeline for generation.
@@ -724,8 +730,10 @@ class StableDiffusionPipelineConcept(DiffusionPipeline, TextualInversionLoaderMi
             is_keyword_tokens2=is_keyword_tokens2,
             is_prior1=is_prior1,
             is_prior2=is_prior2,
-            calibrate_neg=calibrate_neg,
-            calibrate_pos=calibrate_pos,
+            calibrate_kneg=calibrate_kneg,
+            calibrate_kpos=calibrate_kpos,
+            calibrate_pneg=calibrate_pneg,
+            calibrate_ppos=calibrate_ppos,
         )
         # pdb.set_trace() 
         # 4. Prepare timesteps

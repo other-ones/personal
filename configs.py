@@ -5,8 +5,10 @@ import argparse
 def parse_args(input_args=None):
     parser = argparse.ArgumentParser(description="Simple example of a training script.")
     # ADDED
-    parser.add_argument('--calibrate_neg',type=float,default=0)
-    parser.add_argument('--calibrate_pos',type=float,default=0)
+    parser.add_argument('--calibrate_kneg',type=float,default=0)
+    parser.add_argument('--calibrate_kpos',type=float,default=0)
+    parser.add_argument('--calibrate_pneg',type=float,default=0)
+    parser.add_argument('--calibrate_ppos',type=float,default=0)
     parser.add_argument('--sim_margin',type=float)
     parser.add_argument('--dissim_layers',type=str,default='1to12')
     parser.add_argument('--make_composition',type=int,required=False)

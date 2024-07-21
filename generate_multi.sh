@@ -19,10 +19,12 @@ accelerate launch --main_process_port 2730  generate_multi.py \
   --placeholder_token2="<pet_dog1>" \
   --include_prior_concept=1 \
   --prompt_type='two_pets' \
-  --eval_batch_size=20 \
+  --eval_batch_size=5 \
   --num_images_per_prompt=15 \
-  --calibrate_pos=1 \
-  --calibrate_neg=1
+  --calibrate_kpos=0 \
+  --calibrate_ppos=0 \
+  --calibrate_kneg=0 \
+  --calibrate_pneg=1
 
 
 
@@ -47,8 +49,10 @@ accelerate launch --main_process_port 2731  generate_multi.py \
   --placeholder_token2="<pet_dog1>" \
   --include_prior_concept=1 \
   --prompt_type='two_pets' \
-  --eval_batch_size=20 \
+  --eval_batch_size=5 \
   --num_images_per_prompt=15 \
-  --calibrate_pos=0.5 \
-  --calibrate_neg=0.5
+  --calibrate_kpos=0 \
+  --calibrate_ppos=0 \
+  --calibrate_kneg=0 \
+  --calibrate_pneg=10
 

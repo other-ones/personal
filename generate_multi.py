@@ -116,12 +116,18 @@ def main(args):
 
     exp_name=args.resume_unet_path.split('/')[-4]
     exp_dir=os.path.join(args.output_dir,exp_name)
-    poscal_str=float_to_str(args.calibrate_pos)
-    negcal_str=float_to_str(args.calibrate_neg)
-    poscal_str=poscal_str.replace('.','')
-    negcal_str=negcal_str.replace('.','')
-    exp_dir+='_poscal{}'.format(poscal_str)
-    exp_dir+='_negcal{}'.format(negcal_str)
+    kneg_str=float_to_str(args.calibrate_kneg)
+    kpos_str=float_to_str(args.calibrate_kpos)
+    pneg_str=float_to_str(args.calibrate_pneg)
+    ppos_str=float_to_str(args.calibrate_ppos)
+    kneg_str=kneg_str.replace('.','')
+    kpos_str=kpos_str.replace('.','')
+    pneg_str=pneg_str.replace('.','')
+    ppos_str=ppos_str.replace('.','')
+    exp_dir+='_kneg{}'.format(kneg_str)
+    exp_dir+='_kpos{}'.format(kpos_str)
+    exp_dir+='_pneg{}'.format(pneg_str)
+    exp_dir+='_ppos{}'.format(ppos_str)
     sample_dir = os.path.join(exp_dir,'generated')
     merged_dir = os.path.join(exp_dir,'merged')
     os.makedirs(sample_dir, exist_ok=True)
@@ -389,8 +395,10 @@ def main(args):
                             is_keyword_tokens2=is_keyword_tokens2_list,
                             is_prior1=is_prior1_list,
                             is_prior2=is_prior2_list,
-                            calibrate_pos=args.calibrate_pos,
-                            calibrate_neg=args.calibrate_neg,
+                            calibrate_kpos=args.calibrate_kpos,
+                            calibrate_kneg=args.calibrate_kneg,
+                            calibrate_ppos=args.calibrate_ppos,
+                            calibrate_pneg=args.calibrate_pneg,
                             ).images
             
             # 
