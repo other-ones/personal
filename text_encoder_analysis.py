@@ -414,6 +414,10 @@ def main():
             target_emb2=learned_embed2
         if accelerator.is_main_process:
             count=1
+            print(args.calibrate_kneg,'calibrate_kneg')
+            print(args.calibrate_kpos,'calibrate_kpos')
+            print(args.calibrate_pneg,'calibrate_pneg')
+            print(args.calibrate_ppos,'calibrate_ppos')
             out = text_encoder(input_ids_pos,
                                 is_keyword_tokens1=is_keyword_tokens1,
                                 inj_embeddings1=target_emb1,

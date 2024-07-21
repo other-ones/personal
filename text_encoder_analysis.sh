@@ -30,7 +30,7 @@ accelerate launch --main_process_port 1234  text_encoder_analysis.py \
   --include_prior_concept=1 \
   --run_name='tmp' \
   --calibrate_kpos=0 \
-  --calibrate_kneg=1 \
+  --calibrate_kneg=0 \
   --calibrate_pneg=0 \
   --calibrate_ppos=0 
 
