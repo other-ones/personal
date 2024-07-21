@@ -22,9 +22,10 @@ accelerate launch --main_process_port 2730  generate_multi.py \
   --eval_batch_size=5 \
   --num_images_per_prompt=15 \
   --calibrate_kpos=0 \
-  --calibrate_ppos=0 \
+  --calibrate_ppos=1 \
   --calibrate_kneg=0 \
-  --calibrate_pneg=1
+  --calibrate_pneg=1 \
+  --break_num=3
 
 
 
@@ -52,7 +53,8 @@ accelerate launch --main_process_port 2731  generate_multi.py \
   --eval_batch_size=5 \
   --num_images_per_prompt=15 \
   --calibrate_kpos=0 \
-  --calibrate_ppos=0 \
+  --calibrate_ppos=10 \
   --calibrate_kneg=0 \
-  --calibrate_pneg=10asdas
+  --calibrate_pneg=10 \
+  --break_num=3
 

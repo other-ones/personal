@@ -324,19 +324,19 @@ class CLIPAttention(nn.Module):
             # k1 - neg
             print('negative calibration')
             k1_min_scores=torch.min(k1_scores,dim=-1,keepdim=True)[0] # 4800,1
-            k1_k2_scores=k1_scores[is_keyword_tokens2].view(bsz * self.num_heads,1)# 4800,1
-            offsets_k1_k2=torch.abs(k1_k2_scores-k1_min_scores)
+            k1_p2_scores=k1_scores[is_prior2].view(bsz * self.num_heads,1)# 4800,1
+            offsets_k1_p2=torch.abs(k1_p2_scores-k1_min_scores)
             
             # k2 - neg
             k2_min_scores=torch.min(k2_scores,dim=-1,keepdim=True)[0] # 4800,1
-            k2_k1_scores=k2_scores[is_keyword_tokens1].view(bsz * self.num_heads,1) # 4800,1
-            offsets_k2_k1=torch.abs(k2_k1_scores-k2_min_scores)
+            k2_p1_scores=k2_scores[is_prior1].view(bsz * self.num_heads,1) # 4800,1
+            offsets_k2_p1=torch.abs(k2_p1_scores-k2_min_scores)
             # # calibrate scores
             # # key1/key2
-            k1_k2_scores=k1_k2_scores.view(bsz * self.num_heads,1)-(offsets_k1_k2*calibrate_kneg)
-            k2_k1_scores=k2_k1_scores.view(bsz * self.num_heads,1)-(offsets_k2_k1*calibrate_kneg)
-            k1_scores[is_keyword_tokens2]=k1_k2_scores.view(bsz * self.num_heads)
-            k2_scores[is_keyword_tokens1]=k2_k1_scores.view(bsz * self.num_heads)
+            k1_p2_scores=k1_p2_scores.view(bsz * self.num_heads,1)-(offsets_k1_p2*calibrate_kneg)
+            k2_p1_scores=k2_p1_scores.view(bsz * self.num_heads,1)-(offsets_k2_p1*calibrate_kneg)
+            k1_scores[is_prior2]=k1_p2_scores.view(bsz * self.num_heads)
+            k2_scores[is_prior1]=k2_p1_scores.view(bsz * self.num_heads)
 
         if calibrate_pneg:
             # p1 - neg
@@ -347,14 +347,27 @@ class CLIPAttention(nn.Module):
             p2_k1_scores=p2_scores[is_keyword_tokens1].view(bsz * self.num_heads,1) # 4800,1
             p2_min_scores=torch.min(p2_scores,dim=-1,keepdim=True)[0] # 4800,1
             offsets_p2_k1=torch.abs(p2_k1_scores-p2_min_scores)
-
-
-            # # calibrate scores
+            # calibrate scores
             # p1/p2
             p1_k2_scores=p1_k2_scores.view(bsz * self.num_heads,1)-(offsets_p1_k2*calibrate_pneg)
             p1_scores[is_keyword_tokens2]=p1_k2_scores.view(bsz * self.num_heads)
             p2_k1_scores=p2_k1_scores.view(bsz * self.num_heads,1)-(offsets_p2_k1*calibrate_pneg)
             p2_scores[is_keyword_tokens1]=p2_k1_scores.view(bsz * self.num_heads)
+
+            # # p1 - neg
+            # p1_min_scores=torch.min(p1_scores,dim=-1,keepdim=True)[0] # 4800,1
+            # p1_p2_scores=p1_scores[is_prior2].view(bsz * self.num_heads,1) # 4800,1
+            # offsets_p1_p2=torch.abs(p1_p2_scores-p1_min_scores)
+            # # p2 - neg
+            # p2_p1_scores=p2_scores[is_prior1].view(bsz * self.num_heads,1) # 4800,1
+            # p2_min_scores=torch.min(p2_scores,dim=-1,keepdim=True)[0] # 4800,1
+            # offsets_p2_p1=torch.abs(p2_p1_scores-p2_min_scores)
+            # # # calibrate scores
+            # # p1/p2
+            # p1_p2_scores=p1_p2_scores.view(bsz * self.num_heads,1)-(offsets_p1_p2*calibrate_pneg)
+            # p1_scores[is_prior2]=p1_p2_scores.view(bsz * self.num_heads)
+            # p2_p1_scores=p2_p1_scores.view(bsz * self.num_heads,1)-(offsets_p2_p1*calibrate_pneg)
+            # p2_scores[is_prior1]=p2_p1_scores.view(bsz * self.num_heads)
 
 
                 

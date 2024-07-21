@@ -422,8 +422,10 @@ def main():
                                 output_similarities=True,
                                 output_attentions=True,
                                 non_keyword_idxs=non_keyword_idxs,
-                                calibrate_pos=args.calibrate_pos,
-                                calibrate_neg=args.calibrate_neg,
+                                calibrate_kneg=args.calibrate_kneg,
+                                calibrate_kpos=args.calibrate_kpos,
+                                calibrate_pneg=args.calibrate_pneg,
+                                calibrate_ppos=args.calibrate_ppos,
                                 is_prior1=is_prior1,
                                 is_prior2=is_prior2,
                                 )

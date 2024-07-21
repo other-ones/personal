@@ -318,6 +318,7 @@ def main(args):
     prior_word1=args.prior_concept1
     prior_word2=args.prior_concept2
     caption_data={}
+
     with torch.no_grad():
         for batch_idx in range(num_batches):
             prompts=eval_prompts[batch_idx*batch_size:(batch_idx+1)*batch_size]
@@ -437,6 +438,9 @@ def main(args):
             print(batch_idx+1,num_batches,render_delay)
             print(merged_viz.size,'merged_viz.size',len(images),'len(images)')
             merged_viz.save(os.path.join(merged_dir,'merged_{:03d}.jpg'.format(batch_idx+1)))
+            if args.break_num and (batch_idx+1)==args.break_num:
+                break
+                
             
     json.dump(caption_data,caption_file,indent=1)
     accelerator.wait_for_everyone()

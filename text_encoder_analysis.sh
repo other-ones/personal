@@ -29,7 +29,10 @@ accelerate launch --main_process_port 1234  text_encoder_analysis.py \
   --resume_text_encoder_path='saved_models/dreambooth_models/multi/tmp_multi_learned_embeds/checkpoints/checkpoint-2000/text_encoder_s2000.pt' \
   --include_prior_concept=1 \
   --run_name='tmp' \
-  --calibrate_pos=0.1 \
-  --calibrate_neg=0
+  --calibrate_kpos=0 \
+  --calibrate_kneg=1 \
+  --calibrate_pneg=0 \
+  --calibrate_ppos=0 
+
 
   
